@@ -14,7 +14,7 @@ Intended infrastructure scope:
 - [ ] [DB-Operator](https://github.com/kloeckner-i/db-operator)
 - [ ] [Composable Operator](https://github.com/composable-operator/composable)
 - [ ] [k8up](https://github.com/k8up-io/k8up)
-- [ ] [Flux](https://fluxcd.io/) _may be revisited in the future for image automation or notifications_
+- [x] [Flux](https://fluxcd.io/) _may be revisited in the future for image automation or notifications_
 - [ ] [External DNS](https://github.com/kubernetes-sigs/external-dns) _(Has to be tested more thoroughly lateron)_
 - [ ] [Grafana-Agent-Operator](https://grafana.com/docs/grafana-cloud/kubernetes-monitoring/) (better alert config solution may be required in the future)
 - [ ] [Renovate](https://docs.renovatebot.com/)

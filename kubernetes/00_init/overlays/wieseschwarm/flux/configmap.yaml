@@ -1,0 +1,9 @@
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: wieseschwarm-flux-config
+  namespace: flux-system
+data:
+  repoRefreshInterval: 5m0s
+  targerBranch: main

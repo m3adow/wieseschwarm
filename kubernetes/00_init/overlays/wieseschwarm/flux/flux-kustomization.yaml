@@ -1,0 +1,13 @@
+---
+apiVersion: ibmcloud.ibm.com/v1alpha1
+kind: Composable
+metadata:
+  name: flux-system-kustomization
+  namespace: flux-system
+spec:
+  interval: 0m30s
+  path: ./kubernetes/03_clusters/wieseschwarm
+  prune: true
+  sourceRef:
+    kind: GitRepository
+    name: wieseschwarm
