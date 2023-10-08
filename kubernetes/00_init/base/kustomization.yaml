@@ -1,0 +1,8 @@
+---
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  # While all the CRDs could be added to this file, adding it to a subdirs kustomization (hopefully) makes it easier to understand
+  - crds
+  - flux

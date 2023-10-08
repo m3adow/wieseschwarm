@@ -1,0 +1,20 @@
+---
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  # Composable Operator
+  - https://github.com/composable-operator/composable/releases/download/v0.3.1/crds.yaml
+  # Cert Manager
+  - https://github.com/cert-manager/cert-manager/releases/download/v1.9.1/cert-manager.crds.yaml
+  # Sealed Secrets
+  - https://raw.githubusercontent.com/bitnami-labs/sealed-secrets/v0.24.1/helm/sealed-secrets/crds/bitnami.com_sealedsecrets.yaml
+
+# Remove invalid field of default composable CRD
+patches:
+  - patch: |-
+      - op: remove
+        path: /metadata/creationTimestamp
+    target:
+      kind: CustomResourceDefinition
+      name: composables.ibmcloud.ibm.com

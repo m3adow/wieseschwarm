@@ -1,0 +1,9 @@
+---
+apiVersion: source.toolkit.fluxcd.io/v1beta2
+kind: HelmRepository
+metadata:
+  name: kloeckner
+  namespace: flux-system # Namespace has to be explicitly set for Renovate
+spec:
+  interval: 6h
+  url: https://kloeckner-i.github.io/charts
