@@ -4,6 +4,4 @@ kind: Kustomization
 
 resources:
   - ../../base/
-  - flux/configmap.yaml
-  - flux/flux-kustomization.yaml
-  - flux/git-repository.yaml
+  - flux

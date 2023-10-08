@@ -5,7 +5,7 @@ metadata:
   name: flux-system
   namespace: flux-system
 spec:
-  interval: ${WIESESCHWARM__REPO_REFRESH_INTERVAL}
+  interval: 0m30s
   path: ./kubernetes/03_clusters/wieseschwarm
   prune: true
   sourceRef:

@@ -11,8 +11,6 @@ resources:
   - namespace.yaml
   # Sealed Secrets keys used for encrypting the secrets in this repo
   - secret/sealed-secrets/secret-sealedsecrets-key.yaml
-  # - secret/grafana-agent/secret-basic-auth-passwords.yaml
-
-patches:
   # Flux Repo Identity for Wieseschwarm Repo
-  - path: secret/flux/secret-patch.yaml
+  - secret/flux/secret.yaml
+  # - secret/grafana-agent/secret-basic-auth-passwords.yaml

@@ -5,7 +5,6 @@ metadata:
   name: wieseschwarm
 spec:
   interval: 0m30s
-  path: ./kubernetes/03_clusters/wieseschwarm
   ref:
     branch: develop-2023-10
   secretRef:
