@@ -4,4 +4,5 @@ kind: Kustomization
 
 resources:
   - cert-manager
+  - composable-operator
   - sealed-secrets

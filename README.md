@@ -12,7 +12,7 @@ Intended infrastructure scope:
 - [x] Sealed Secrets
 - [ ] MySQL Operator + Database _(may become MySQL Cluster in the future)_
 - [ ] [DB-Operator](https://github.com/kloeckner-i/db-operator)
-- [ ] [Composable Operator](https://github.com/composable-operator/composable)
+- [x] [Composable Operator](https://github.com/composable-operator/composable)
 - [ ] [k8up](https://github.com/k8up-io/k8up)
 - [x] [Flux](https://fluxcd.io/) _may be revisited in the future for image automation or notifications_
 - [ ] [External DNS](https://github.com/kubernetes-sigs/external-dns) _(Has to be tested more thoroughly lateron)_

@@ -7,5 +7,9 @@ resources:
   - flux/sealedsecret.yaml
 
 patches:
-  # Patch `.spec.acme.email` field
-  - path: cert-manager/secret/clusterissuers-patch.yaml
+  # Patch `.spec.acme.email` field in all ClusterIssuers
+  - path: cert-manager/secret/clusterissuer-patch.yaml
+    target:
+      group: cert-manager.io
+      version: v1
+      kind: ClusterIssuer
