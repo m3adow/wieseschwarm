@@ -5,8 +5,10 @@ kind: Kustomization
 resources:
   # Composable Operator
   - https://github.com/composable-operator/composable/releases/download/v0.3.1/crds.yaml
+
+  ## The following CRDs should be updated automatically by Flux after the initial apply
   # Cert Manager
-  - https://github.com/cert-manager/cert-manager/releases/download/v1.9.1/cert-manager.crds.yaml
+  - https://github.com/cert-manager/cert-manager/releases/download/v1.13.1/cert-manager.crds.yaml
   # Sealed Secrets
   - https://raw.githubusercontent.com/bitnami-labs/sealed-secrets/v0.24.1/helm/sealed-secrets/crds/bitnami.com_sealedsecrets.yaml
 

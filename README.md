@@ -8,7 +8,7 @@ For now, the project will use free SaaS offerings where applicable (e.g. for Met
 
 Intended infrastructure scope:
 
-- [ ] cert-manager
+- [x] cert-manager
 - [x] Sealed Secrets
 - [ ] MySQL Operator + Database _(may become MySQL Cluster in the future)_
 - [ ] [DB-Operator](https://github.com/kloeckner-i/db-operator)
