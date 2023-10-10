@@ -16,9 +16,11 @@ spec:
   install:
     remediation:
       retries: 3
+    crds: CreateReplace
   upgrade:
     remediation:
       retries: 3
+    crds: CreateReplace
   values:
     fullnameOverride: sealed-secrets-controller
     namespace: sealed-secrets
