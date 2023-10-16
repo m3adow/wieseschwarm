@@ -9,8 +9,6 @@ resources:
   ## The following CRDs should be updated automatically by Flux after the initial apply
   # Cert Manager
   - https://github.com/cert-manager/cert-manager/releases/download/v1.13.1/cert-manager.crds.yaml
-  # Sealed Secrets
-  - https://raw.githubusercontent.com/bitnami-labs/sealed-secrets/v0.24.1/helm/sealed-secrets/crds/bitnami.com_sealedsecrets.yaml
 
 # Remove invalid field of default composable CRD
 patches:
