@@ -1,0 +1,52 @@
+---
+apiVersion: helm.toolkit.fluxcd.io/v2beta1
+kind: HelmRelease
+metadata:
+  name: openebs-jiva
+spec:
+  interval: 1h
+  chart:
+    spec:
+      chart: jiva
+      version: <3.5.0
+      sourceRef:
+        kind: HelmRepository
+        name: openebs-jiva
+        namespace: flux-system
+  install:
+    remediation:
+      retries: 3
+    crds: CreateReplace
+  upgrade:
+    remediation:
+      retries: 3
+    crds: CreateReplace
+  values:
+    storageClass:
+      isDefaultClass: true
+
+  postRenderers:
+    - kustomize:
+        # Apply required patches, see:
+        # https://www.talos.dev/v1.5/kubernetes-guides/configuration/replicated-local-storage-with-openebs-jiva/#patching-the-jiva-installation
+        patchesStrategicMerge:
+          - apiVersion: v1
+            kind: ConfigMap
+            metadata:
+              name: openebs-jiva-csi-iscsiadm
+            data:
+              iscsiadm: |
+                #!/bin/sh
+                iscsid_pid=$(pgrep iscsid)
+
+                nsenter --mount="/proc/${iscsid_pid}/ns/mnt" --net="/proc/${iscsid_pid}/ns/net" -- /usr/local/sbin/iscsiadm "$@"
+        patchesJson6902:
+          - target:
+              version: v1
+              group: apps
+              kind: DaemonSet
+              name: openebs-jiva-csi-node
+            patch:
+              - op: add
+                path: /spec/template/spec/hostPID
+                value: true

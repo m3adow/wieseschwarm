@@ -10,6 +10,7 @@ Intended infrastructure scope:
 
 - [x] cert-manager
 - [x] ~~Sealed Secrets~~ Replaced by SOPS
+- [x] [OpenEBS Jiva](https://openebs.io/docs/concepts/jiva)
 - [ ] MySQL Operator + Database _(may become MySQL Cluster in the future)_
 - [ ] [DB-Operator](https://github.com/kloeckner-i/db-operator)
 - [x] [Composable Operator](https://github.com/composable-operator/composable)
