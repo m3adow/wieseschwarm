@@ -1,0 +1,64 @@
+# ---
+# apiVersion: kustomize.toolkit.fluxcd.io/v1
+# kind: Kustomization
+# metadata:
+#   name: infrastructure-apps-misc
+#   namespace: flux-system
+# spec:
+#   interval: 0m30s
+#   sourceRef:
+#     kind: GitRepository
+#     name: wieseschwarm
+#   path: ./kubernetes/01_infrastructure/base/cert-manager
+#   prune: true
+#   timeout: 2m30s
+#   wait: true
+---
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: infrastructure-apps-cert-manager
+  namespace: flux-system
+spec:
+  interval: 0m30s
+  sourceRef:
+    kind: GitRepository
+    name: wieseschwarm
+  path: ./kubernetes/01_infrastructure/base/cert-manager
+  prune: true
+  timeout: 2m30s
+  wait: true
+---
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: infrastructure-apps-cert-manager-resources
+  namespace: flux-system
+spec:
+  dependsOn:
+    - name: infrastructure-apps-composable-operator
+  interval: 0m30s
+  sourceRef:
+    kind: GitRepository
+    name: wieseschwarm
+  path: ./kubernetes/01_infrastructure/overlays/wieseschwarm/cert-manager-resources
+  prune: true
+  timeout: 2m30s
+  wait: true
+---
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: infrastructure-apps-composable-operator
+  namespace: flux-system
+spec:
+  dependsOn:
+    - name: infrastructure-apps-cert-manager
+  interval: 0m30s
+  sourceRef:
+    kind: GitRepository
+    name: wieseschwarm
+  path: ./kubernetes/01_infrastructure/base/composable-operator
+  prune: true
+  timeout: 2m30s
+  wait: true
