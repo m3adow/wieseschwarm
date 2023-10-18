@@ -92,3 +92,24 @@ spec:
   prune: true
   timeout: 2m30s
   wait: true
+---
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: infrastructure-apps-mysql
+  namespace: flux-system
+spec:
+  dependsOn:
+    - name: infrastructure-apps-mysql-operator
+  interval: 0m30s
+  sourceRef:
+    kind: GitRepository
+    name: wieseschwarm
+  path: ./kubernetes/01_infrastructure/base/mysql
+  prune: true
+  timeout: 2m30s
+  wait: true
+  decryption:
+    provider: sops
+    secretRef:
+      name: sops-keys

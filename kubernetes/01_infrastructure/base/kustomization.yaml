@@ -6,5 +6,6 @@ resources:
   - cert-manager
   - composable-operator
   - ingress-nginx
+  - mysql
   - mysql-operator
   - openebs-jiva

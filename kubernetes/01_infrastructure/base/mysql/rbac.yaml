@@ -1,0 +1,24 @@
+---
+kind: Role
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: main-cluster-credentials-secret-reader
+rules:
+  - apiGroups: [""]
+    resources: ["secrets"]
+    resourceNames: ["main-cluster-credentials"]
+    verbs: ["get", "list", "watch"]
+
+---
+kind: RoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: composable-main-cluster-credentials-secrets-reader
+subjects:
+  - kind: ServiceAccount
+    name: composable-controller-manager
+    namespace: composable-system
+roleRef:
+  kind: Role
+  name: main-cluster-credentials-secret-reader
+  apiGroup: rbac.authorization.k8s.io

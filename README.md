@@ -12,7 +12,7 @@ Intended infrastructure scope:
 - [x] ~~Sealed Secrets~~ Replaced by SOPS
 - [x] [OpenEBS Jiva](https://openebs.io/docs/concepts/jiva)
 - [x] [ingress-nginx](https://kubernetes.github.io/ingress-nginx/)
-- [ ] MySQL Operator + Database _(may become MySQL Cluster in the future)_
+- [x] MySQL Operator + Database _(may become MySQL Cluster in the future)_
 - [ ] [DB-Operator](https://github.com/kloeckner-i/db-operator)
 - [x] [Composable Operator](https://github.com/composable-operator/composable)
 - [ ] [k8up](https://github.com/k8up-io/k8up)
