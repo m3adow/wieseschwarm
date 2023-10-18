@@ -1,18 +1,3 @@
-# ---
-# apiVersion: kustomize.toolkit.fluxcd.io/v1
-# kind: Kustomization
-# metadata:
-#   name: infrastructure-apps-misc
-#   namespace: flux-system
-# spec:
-#   interval: 0m30s
-#   sourceRef:
-#     kind: GitRepository
-#     name: wieseschwarm
-#   path: ./kubernetes/01_infrastructure/base/cert-manager
-#   prune: true
-#   timeout: 2m30s
-#   wait: true
 ---
 apiVersion: kustomize.toolkit.fluxcd.io/v1
 kind: Kustomization
@@ -89,6 +74,21 @@ spec:
     kind: GitRepository
     name: wieseschwarm
   path: ./kubernetes/01_infrastructure/base/ingress-nginx
+  prune: true
+  timeout: 2m30s
+  wait: true
+---
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: infrastructure-apps-mysql-operator
+  namespace: flux-system
+spec:
+  interval: 0m30s
+  sourceRef:
+    kind: GitRepository
+    name: wieseschwarm
+  path: ./kubernetes/01_infrastructure/base/mysql-operator
   prune: true
   timeout: 2m30s
   wait: true
