@@ -16,4 +16,5 @@ resources:
   - helm-repositories/kloeckner.yaml
   - helm-repositories/mysql.yaml
   - helm-repositories/nextcloud.yaml
+  - helm-repositories/ingress-nginx.yaml
   - helm-repositories/openebs-jiva.yaml

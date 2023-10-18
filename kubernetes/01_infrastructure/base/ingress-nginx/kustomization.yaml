@@ -2,8 +2,8 @@
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 
+namespace: ingress-nginx
+
 resources:
-  - cert-manager
-  - composable-operator
-  - ingress-nginx
-  - openebs-jiva
+  - helmrelease.yaml
+  - namespace.yaml
