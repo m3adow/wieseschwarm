@@ -30,6 +30,10 @@ spec:
   prune: true
   timeout: 2m30s
   wait: true
+  decryption:
+    provider: sops
+    secretRef:
+      name: sops-keys
 ---
 apiVersion: kustomize.toolkit.fluxcd.io/v1
 kind: Kustomization
