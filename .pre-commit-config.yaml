@@ -35,15 +35,12 @@ repos:
       - id: k8svalidate
         files: .yaml$
         stages: ["pre-push"]
+  - repo: https://github.com/stackrox/kube-linter
+    rev: v0.6.5
+    hooks:
+      - id: kube-linter-docker
 
-  # Will configure and fix these later
-
-  # - repo: https://github.com/stackrox/kube-linter
-  #   rev: v0.6.3
-  #   hooks:
-  #     - id: kube-linter-docker
-  #       args: ["lint"]
-  #       stages: ["pre-push"]
+  # May configure and fix this later
   # - repo: https://github.com/kubevious/cli
   #   rev: v1.0.53
   #   hooks:
