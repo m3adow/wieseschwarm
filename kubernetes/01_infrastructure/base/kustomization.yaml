@@ -5,6 +5,7 @@ kind: Kustomization
 resources:
   - cert-manager
   - composable-operator
+  - db-operator
   - ingress-nginx
   - mysql
   - mysql-operator

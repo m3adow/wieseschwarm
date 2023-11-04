@@ -1,0 +1,11 @@
+# As the DB Operator chart doesn't handle CRDs as they should be (in the crds folder),
+# the DBInstance CRD is not installed before usage. Thusly, we need two Kustomizations
+# for the DB operator with interdependency.
+---
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: db-operator
+
+resources:
+  - dbinstance.yaml

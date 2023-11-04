@@ -1,0 +1,32 @@
+---
+kind: Role
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: main-cluster-credentials
+rules:
+  - apiGroups: [""]
+    resources: ["secrets"]
+    # resourceNames: ["main-cluster-credentials"] # Doesn't seem to work with resourceNames :(
+    verbs:
+      - create
+      - delete
+      - deletecollection
+      - get
+      - list
+      - patch
+      - update
+      - watch
+
+---
+kind: RoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: composable-mysql-admin-credentials
+subjects:
+  - kind: ServiceAccount
+    name: composable-controller-manager
+    namespace: composable-system
+roleRef:
+  kind: Role
+  name: main-cluster-credentials
+  apiGroup: rbac.authorization.k8s.io

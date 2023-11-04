@@ -13,7 +13,7 @@ Intended infrastructure scope:
 - [x] [OpenEBS Jiva](https://openebs.io/docs/concepts/jiva)
 - [x] [ingress-nginx](https://kubernetes.github.io/ingress-nginx/)
 - [x] MySQL Operator + Database _(may become MySQL Cluster in the future)_
-- [ ] [DB-Operator](https://github.com/kloeckner-i/db-operator)
+- [x] [DB-Operator](https://github.com/kloeckner-i/db-operator)
 - [x] [Composable Operator](https://github.com/composable-operator/composable)
 - [ ] [k8up](https://github.com/k8up-io/k8up)
 - [x] [Flux](https://fluxcd.io/) _may be revisited in the future for image automation or notifications_

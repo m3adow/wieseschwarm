@@ -55,6 +55,40 @@ spec:
 apiVersion: kustomize.toolkit.fluxcd.io/v1
 kind: Kustomization
 metadata:
+  name: infrastructure-apps-db-operator
+  namespace: flux-system
+spec:
+  dependsOn:
+    - name: infrastructure-apps-mysql
+  interval: 0m30s
+  sourceRef:
+    kind: GitRepository
+    name: wieseschwarm
+  path: ./kubernetes/01_infrastructure/base/db-operator
+  prune: true
+  timeout: 2m30s
+  wait: true
+---
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: infrastructure-apps-db-operator-dbinstance
+  namespace: flux-system
+spec:
+  dependsOn:
+    - name: infrastructure-apps-db-operator
+  interval: 0m30s
+  sourceRef:
+    kind: GitRepository
+    name: wieseschwarm
+  path: ./kubernetes/01_infrastructure/base/db-operator-dbinstance
+  prune: true
+  timeout: 2m30s
+  wait: true
+---
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
   name: infrastructure-apps-openebs-jiva
   namespace: flux-system
 spec:
