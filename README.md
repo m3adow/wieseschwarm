@@ -15,7 +15,7 @@ Intended infrastructure scope:
 - [x] MySQL Operator + Database _(may become MySQL Cluster in the future)_
 - [x] [DB-Operator](https://github.com/kloeckner-i/db-operator)
 - [x] [Composable Operator](https://github.com/composable-operator/composable)
-- [ ] [k8up](https://github.com/k8up-io/k8up)
+- [x] [k8up](https://github.com/k8up-io/k8up)
 - [x] [Flux](https://fluxcd.io/) _may be revisited in the future for image automation or notifications_
 - [ ] [External DNS](https://github.com/kubernetes-sigs/external-dns) _(Has to be tested more thoroughly lateron)_
 - [ ] [Grafana-Agent-Operator](https://grafana.com/docs/grafana-cloud/kubernetes-monitoring/) (better alert config solution may be required in the future)
