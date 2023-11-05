@@ -89,21 +89,6 @@ spec:
 apiVersion: kustomize.toolkit.fluxcd.io/v1
 kind: Kustomization
 metadata:
-  name: infrastructure-apps-openebs-jiva
-  namespace: flux-system
-spec:
-  interval: 0m30s
-  sourceRef:
-    kind: GitRepository
-    name: wieseschwarm
-  path: ./kubernetes/01_infrastructure/base/openebs-jiva
-  prune: true
-  timeout: 2m30s
-  wait: true
----
-apiVersion: kustomize.toolkit.fluxcd.io/v1
-kind: Kustomization
-metadata:
   name: infrastructure-apps-ingress-nginx
   namespace: flux-system
 spec:
@@ -151,3 +136,18 @@ spec:
     provider: sops
     secretRef:
       name: sops-keys
+---
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: infrastructure-apps-openebs-jiva
+  namespace: flux-system
+spec:
+  interval: 0m30s
+  sourceRef:
+    kind: GitRepository
+    name: wieseschwarm
+  path: ./kubernetes/01_infrastructure/base/openebs-jiva
+  prune: true
+  timeout: 2m30s
+  wait: true
