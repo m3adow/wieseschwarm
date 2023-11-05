@@ -17,12 +17,12 @@ Intended infrastructure scope:
 - [x] [Composable Operator](https://github.com/composable-operator/composable)
 - [x] [k8up](https://github.com/k8up-io/k8up)
 - [x] [Flux](https://fluxcd.io/) _may be revisited in the future for image automation or notifications_
-- [ ] [External DNS](https://github.com/kubernetes-sigs/external-dns) _(Has to be tested more thoroughly lateron)_
 - [ ] [Grafana-Agent-Operator](https://grafana.com/docs/grafana-cloud/kubernetes-monitoring/) (better alert config solution may be required in the future)
 - [ ] [Renovate](https://docs.renovatebot.com/)
 
 Extended infrastructure scope (applications considered for later):
 
+- [ ] [External DNS](https://github.com/kubernetes-sigs/external-dns) _(Has to be tested more thoroughly later on)_
 - [ ] [k8s_gateway](https://github.com/ori-edge/k8s_gateway)
 - [ ] [Goldilocks](https://goldilocks.docs.fairwinds.com/)
 - [ ] [Hajimari](https://github.com/toboshii/hajimari)
