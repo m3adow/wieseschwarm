@@ -11,6 +11,7 @@ resources:
   - helm-repositories/bitnami.yaml
   - helm-repositories/external-dns.yaml
   - helm-repositories/grafana.yaml
+  - helm-repositories/grafana-k8s-monitoring.yaml
   - helm-repositories/jetstack.yaml
   - helm-repositories/k8up.yaml
   - helm-repositories/kloeckner.yaml

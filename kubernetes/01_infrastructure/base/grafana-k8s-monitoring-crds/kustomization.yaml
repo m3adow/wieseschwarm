@@ -6,3 +6,4 @@ namespace: k8s-monitoring
 
 resources:
   - helmrelease.yaml
+  - namespace.yaml
