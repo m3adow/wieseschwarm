@@ -17,43 +17,33 @@ Intended infrastructure scope:
 - [x] [Composable Operator](https://github.com/composable-operator/composable)
 - [x] [k8up](https://github.com/k8up-io/k8up)
 - [x] [Flux](https://fluxcd.io/) _may be revisited in the future for image automation or notifications_
-- [ ] [Grafana-Agent-Operator](https://grafana.com/docs/grafana-cloud/kubernetes-monitoring/) (better alert config solution may be required in the future)
+- [x] [Grafana-Agent](https://grafana.com/docs/grafana-cloud/kubernetes-monitoring/)
 - [ ] [Renovate](https://docs.renovatebot.com/)
 
 Extended infrastructure scope (applications considered for later):
 
+- [ ] A better LB/VIP solution (may utilise MetalLB, PureLB, kube-vip or something like this)
 - [ ] [External DNS](https://github.com/kubernetes-sigs/external-dns) _(Has to be tested more thoroughly later on)_
 - [ ] [k8s_gateway](https://github.com/ori-edge/k8s_gateway)
 - [ ] [Goldilocks](https://goldilocks.docs.fairwinds.com/)
 - [ ] [Hajimari](https://github.com/toboshii/hajimari)
 - [ ] [Reloader](https://github.com/stakater/Reloader)
-- [ ] Better Grafana Cloud alerting solution
 - [ ] [Vertical Pod Autoscaler](https://github.com/kubernetes/autoscaler/tree/master/vertical-pod-autoscaler) & [Goldilocks](https://goldilocks.docs.fairwinds.com/#how-can-this-help-with-my-resource-settings)
 
 Application scope (subject to change):
 
-- [ ] [Nextcloud](https://nextcloud.com/) _(Basic installation stuff done, customization WIP)_
-- [ ] [Nitter](https://github.com/zedeus/nitter)
-- [ ] [Firefox Sync](https://github.com/mozilla/fxa/)
+- [ ] [Nextcloud](https://nextcloud.com/)
 - [ ] [Paperless NGX](https://github.com/paperless-ngx/paperless-ngx)
 - [ ] [Vaultwarden](https://github.com/dani-garcia/vaultwarden)
 
-Other tasks:
+If I ever have the time:
+
+- [ ] [Firefox Sync](https://github.com/mozilla/fxa/)
+      Other tasks:
 
 - [x] Create Makefile for bootstrapping
 - [ ] Add requests & limits to resources _(will be done later, potentially with VPA)_
 
-## Development
+## Bootstrapping & Development
 
-Development is done via [k3d](https://k3d.io/). Persistent data (volumes) will be written to `${K3D_DIR}` if set or `/tmp/` otherwise. I also recommend to set ACLs for the `volumes` folder:
-
-```bash
-setfacl -Rdm ${USER}:rwx ${K3D_DIR}
-```
-
-This will prevent permission problems when `clean`ing the development environment.
-
-- To create a new cluster on a fresh system, run `make develop` or `make new`
-- To tear down the development cluster, run `make clean`
-- To recreate a cluster run `make new`
-- Starting/Stopping clusters can be done with `make start`/`make stop`
+The bootstrapping & development process have to be clean
