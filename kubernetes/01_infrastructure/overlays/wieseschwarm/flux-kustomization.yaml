@@ -1,0 +1,202 @@
+---
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: infrastructure-apps-cert-manager
+  namespace: flux-system
+spec:
+  interval: 0m30s
+  sourceRef:
+    kind: GitRepository
+    name: wieseschwarm
+  path: ./kubernetes/01_infrastructure/base/cert-manager
+  prune: true
+  timeout: 2m30s
+  wait: true
+---
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: infrastructure-apps-cert-manager-resources
+  namespace: flux-system
+spec:
+  dependsOn:
+    - name: infrastructure-apps-composable-operator
+  interval: 0m30s
+  sourceRef:
+    kind: GitRepository
+    name: wieseschwarm
+  path: ./kubernetes/01_infrastructure/overlays/wieseschwarm/cert-manager-resources
+  prune: true
+  timeout: 2m30s
+  wait: true
+  decryption:
+    provider: sops
+    secretRef:
+      name: sops-keys
+---
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: infrastructure-apps-composable-operator
+  namespace: flux-system
+spec:
+  dependsOn:
+    - name: infrastructure-apps-cert-manager
+  interval: 0m30s
+  sourceRef:
+    kind: GitRepository
+    name: wieseschwarm
+  path: ./kubernetes/01_infrastructure/base/composable-operator
+  prune: true
+  timeout: 2m30s
+  wait: true
+---
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: infrastructure-apps-db-operator
+  namespace: flux-system
+spec:
+  dependsOn:
+    - name: infrastructure-apps-mysql
+  interval: 0m30s
+  sourceRef:
+    kind: GitRepository
+    name: wieseschwarm
+  path: ./kubernetes/01_infrastructure/base/db-operator
+  prune: true
+  timeout: 2m30s
+  wait: true
+---
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: infrastructure-apps-db-operator-dbinstance
+  namespace: flux-system
+spec:
+  dependsOn:
+    - name: infrastructure-apps-db-operator
+  interval: 0m30s
+  sourceRef:
+    kind: GitRepository
+    name: wieseschwarm
+  path: ./kubernetes/01_infrastructure/base/db-operator-dbinstance
+  prune: true
+  timeout: 2m30s
+  wait: true
+---
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: infrastructure-apps-grafana-k8s-monitoring
+  namespace: flux-system
+spec:
+  interval: 0m30s
+  sourceRef:
+    kind: GitRepository
+    name: wieseschwarm
+  path: ./kubernetes/01_infrastructure/overlays/wieseschwarm/grafana-k8s-monitoring
+  prune: true
+  timeout: 2m30s
+  wait: true
+  decryption:
+    provider: sops
+    secretRef:
+      name: sops-keys
+---
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: infrastructure-apps-grafana-k8s-monitoring-crds
+  namespace: flux-system
+spec:
+  interval: 0m30s
+  sourceRef:
+    kind: GitRepository
+    name: wieseschwarm
+  path: ./kubernetes/01_infrastructure/base/grafana-k8s-monitoring-crds
+  prune: true
+  timeout: 2m30s
+  wait: true
+---
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: infrastructure-apps-ingress-nginx
+  namespace: flux-system
+spec:
+  interval: 0m30s
+  sourceRef:
+    kind: GitRepository
+    name: wieseschwarm
+  path: ./kubernetes/01_infrastructure/base/ingress-nginx
+  prune: true
+  timeout: 2m30s
+  wait: true
+---
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: infrastructure-apps-k8up
+  namespace: flux-system
+spec:
+  interval: 0m30s
+  sourceRef:
+    kind: GitRepository
+    name: wieseschwarm
+  path: ./kubernetes/01_infrastructure/base/k8up
+  prune: true
+  timeout: 2m30s
+  wait: true
+---
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: infrastructure-apps-mysql-operator
+  namespace: flux-system
+spec:
+  interval: 0m30s
+  sourceRef:
+    kind: GitRepository
+    name: wieseschwarm
+  path: ./kubernetes/01_infrastructure/base/mysql-operator
+  prune: true
+  timeout: 2m30s
+  wait: true
+---
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: infrastructure-apps-mysql
+  namespace: flux-system
+spec:
+  dependsOn:
+    - name: infrastructure-apps-mysql-operator
+  interval: 0m30s
+  sourceRef:
+    kind: GitRepository
+    name: wieseschwarm
+  path: ./kubernetes/01_infrastructure/base/mysql
+  prune: true
+  timeout: 2m30s
+  wait: true
+  decryption:
+    provider: sops
+    secretRef:
+      name: sops-keys
+---
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: infrastructure-apps-openebs-jiva
+  namespace: flux-system
+spec:
+  interval: 0m30s
+  sourceRef:
+    kind: GitRepository
+    name: wieseschwarm
+  path: ./kubernetes/01_infrastructure/base/openebs-jiva
+  prune: true
+  timeout: 2m30s
+  wait: true

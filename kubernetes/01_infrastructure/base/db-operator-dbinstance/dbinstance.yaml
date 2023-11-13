@@ -1,0 +1,13 @@
+---
+apiVersion: kci.rocks/v1alpha1
+kind: DbInstance
+metadata:
+  name: mysql-main
+spec:
+  adminSecretRef:
+    Name: mysql-admin-credentials
+    Namespace: db-operator
+  engine: mysql
+  generic:
+    host: main-cluster.mysql.svc.cluster.local
+    port: 3306

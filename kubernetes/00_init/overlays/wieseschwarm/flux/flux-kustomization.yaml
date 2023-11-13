@@ -1,0 +1,13 @@
+---
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: flux-system
+  namespace: flux-system
+spec:
+  interval: 0m30s
+  path: ./kubernetes/03_clusters/wieseschwarm
+  prune: true
+  sourceRef:
+    kind: GitRepository
+    name: wieseschwarm

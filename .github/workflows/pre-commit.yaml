@@ -1,0 +1,22 @@
+---
+name: pre-commit
+
+# yamllint disable-line rule:truthy
+on:
+  pull_request:
+
+jobs:
+  pre-commit:
+    # ubuntu-latest uses python 3.12 which removes distutils which are still used by k8svalidate
+    runs-on: ubuntu-20.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v4
+      # Run default hooks (in case pre-commit wasn't installed on commiters side)
+      - uses: pre-commit/action@v3.0.0
+        with:
+          extra_args: --all-files
+      # Run additional longer running pre-commit hooks
+      - uses: pre-commit/action@v3.0.0
+        with:
+          extra_args: --all-files --hook-stage pre-commit --hook-stage pre-push

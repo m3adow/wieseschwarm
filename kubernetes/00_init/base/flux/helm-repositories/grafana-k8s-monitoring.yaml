@@ -1,0 +1,20 @@
+# As the k8s-monitoring-helm chart uses a stupid way of installing the Prometheus Operator CRDs,
+# which often times blocks Flux' HelmRelease reconciliation, we have to take the Prometheus CRDs
+# subchart from the chart and install them independently in the hopes that this increases compatibility
+# and reduces maintenance effort in contrast to just directly install from the Prometheus Operator repo
+---
+apiVersion: source.toolkit.fluxcd.io/v1
+kind: GitRepository
+metadata:
+  name: grafana-k8s-monitoring-subcharts
+  namespace: flux-system
+spec:
+  interval: 6h
+  url: https://github.com/grafana/k8s-monitoring-helm
+  ref:
+    tag: v0.3.1
+  ignore: |
+    # exclude all
+    /*
+    # Only include subcharts directory
+    !/charts/k8s-monitoring/charts/

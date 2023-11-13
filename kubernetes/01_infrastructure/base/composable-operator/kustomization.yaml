@@ -1,0 +1,21 @@
+---
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: composable-system
+
+resources:
+  # As Composable currently does not have the manifests and CRDs separated, this was done manually
+  - https://github.com/composable-operator/composable/releases/download/v0.3.1/crds.yaml
+  - manifests.yaml
+  # Roles for Composable to use cert-manager
+  - rbac.yaml
+
+# Remove invalid field of default composable CRD
+patches:
+  - patch: |-
+      - op: remove
+        path: /metadata/creationTimestamp
+    target:
+      kind: CustomResourceDefinition
+      name: composables.ibmcloud.ibm.com

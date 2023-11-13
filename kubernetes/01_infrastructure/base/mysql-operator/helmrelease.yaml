@@ -1,0 +1,31 @@
+---
+apiVersion: helm.toolkit.fluxcd.io/v2beta1
+kind: HelmRelease
+metadata:
+  name: mysql-operator
+spec:
+  interval: 1h
+  chart:
+    spec:
+      chart: mysql-operator
+      version: ^2.1.0
+      sourceRef:
+        kind: HelmRepository
+        name: mysql
+        namespace: flux-system
+  install:
+    remediation:
+      retries: 3
+    crds: CreateReplace
+  upgrade:
+    remediation:
+      retries: 3
+    crds: CreateReplace
+
+  # The original Oracle Registry is as slow as one would expect of Oracle quality, so this may be required
+  # It doesn't always serve the latest version though
+  # values:
+  #   image:
+  #     registry: docker.io
+  #     repository: mysql
+  #     name: mysql-operator

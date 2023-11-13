@@ -1,0 +1,12 @@
+---
+apiVersion: helm.toolkit.fluxcd.io/v2beta1
+kind: HelmRelease
+metadata:
+  name: grafana-k8s-monitoring
+spec:
+  values:
+    cluster:
+      name: wieseschwarm
+  valuesFrom:
+    - kind: Secret
+      name: k8s-monitoring-helm-values
