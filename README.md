@@ -6,7 +6,7 @@ Kubernetes manifests as well as some Talos Linux configuration manifests intende
 
 For now, the project will use free SaaS offerings where applicable (e.g. for Metrics & Monitoring).
 
-Intended infrastructure scope:
+**Intended infrastructure scope:**
 
 - [x] cert-manager
 - [x] ~~Sealed Secrets~~ Replaced by SOPS
@@ -18,9 +18,9 @@ Intended infrastructure scope:
 - [x] [k8up](https://github.com/k8up-io/k8up)
 - [x] [Flux](https://fluxcd.io/) _may be revisited in the future for image automation or notifications_
 - [x] [Grafana-Agent](https://grafana.com/docs/grafana-cloud/kubernetes-monitoring/)
-- [ ] [Renovate](https://docs.renovatebot.com/)
+- [x] [Renovate](https://docs.renovatebot.com/)
 
-Extended infrastructure scope (applications considered for later):
+**Extended infrastructure scope (applications considered for later):**
 
 - [ ] A better LB/VIP solution (may utilise MetalLB, PureLB, kube-vip or something like this)
 - [ ] [External DNS](https://github.com/kubernetes-sigs/external-dns) _(Has to be tested more thoroughly later on)_
@@ -39,11 +39,12 @@ Application scope (subject to change):
 If I ever have the time:
 
 - [ ] [Firefox Sync](https://github.com/mozilla/fxa/)
-      Other tasks:
+
+**Other tasks:**
 
 - [x] Create Makefile for bootstrapping
 - [ ] Add requests & limits to resources _(will be done later, potentially with VPA)_
 
 ## Bootstrapping & Development
 
-The bootstrapping & development process have to be clean
+The bootstrapping & development process have to be cleaned up, streamlined and documented in the future.
