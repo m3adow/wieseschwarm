@@ -6,7 +6,7 @@ metadata:
 spec:
   interval: 0m30s
   ref:
-    branch: develop-2023-10
+    branch: main
   secretRef:
     name: wieseschwarm-repo-identity
   url: ssh://git@github.com/m3adow/wieseschwarm.git
