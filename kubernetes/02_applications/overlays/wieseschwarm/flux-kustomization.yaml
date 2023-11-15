@@ -2,16 +2,18 @@
 apiVersion: kustomize.toolkit.fluxcd.io/v1
 kind: Kustomization
 metadata:
-  name: applications
+  name: applications-nextcloud
   namespace: flux-system
 spec:
   interval: 0m30s
-  dependsOn:
-    - name: infrastructure
   sourceRef:
     kind: GitRepository
     name: wieseschwarm
-  path: ./kubernetes/02_applications/overlays/wieseschwarm
+  path: ./kubernetes/02_applications/overlays/wieseschwarm/nextcloud
   prune: true
   timeout: 2m30s
   wait: true
+  decryption:
+    provider: sops
+    secretRef:
+      name: sops-keys
