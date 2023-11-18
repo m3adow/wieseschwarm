@@ -145,10 +145,14 @@ spec:
   sourceRef:
     kind: GitRepository
     name: wieseschwarm
-  path: ./kubernetes/01_infrastructure/base/k8up
+  path: ./kubernetes/01_infrastructure/overlays/wieseschwarm/k8up
   prune: true
   timeout: 2m30s
   wait: true
+  decryption:
+    provider: sops
+    secretRef:
+      name: sops-keys
 ---
 apiVersion: kustomize.toolkit.fluxcd.io/v1
 kind: Kustomization
