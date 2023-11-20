@@ -18,7 +18,8 @@ For now, the project will use free SaaS offerings where applicable (e.g. for Met
 - [x] [k8up](https://github.com/k8up-io/k8up)
 - [x] [Flux](https://fluxcd.io/) _may be revisited in the future for image automation or notifications_
 - [x] [Grafana-Agent](https://grafana.com/docs/grafana-cloud/kubernetes-monitoring/)
-- [x] [Renovate](https://docs.renovatebot.com/)
+- [x] [Renovate](https://docs.renovatebot.com/) _scope of updates has to be extended_
+- [x] [Cloudflared](https://github.com/cloudflare/cloudflared) for easy connections to the outside
 
 **Extended infrastructure scope (applications considered for later):**
 
