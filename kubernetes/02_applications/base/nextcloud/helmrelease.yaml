@@ -48,6 +48,8 @@ spec:
       enabled: "true"
       nextcloudData:
         enabled: "true"
+    podAnnotations:
+      k8up.io/backup: "true"
     # Use Redis
     redis:
       enabled: "true"
