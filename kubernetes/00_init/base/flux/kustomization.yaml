@@ -20,3 +20,4 @@ resources:
   - helm-repositories/nextcloud.yaml
   - helm-repositories/ingress-nginx.yaml
   - helm-repositories/openebs-jiva.yaml
+  - helm-repositories/prometheus-community.yaml
