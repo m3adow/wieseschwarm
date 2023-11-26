@@ -21,3 +21,8 @@ spec:
     remediation:
       retries: 3
     crds: CreateReplace
+  values:
+    k8up:
+      envVars:
+        - name: BACKUP_PROMURL
+          value: http://prometheus-pushgateway.prometheus-pushgateway.svc.cluster.local:9091
