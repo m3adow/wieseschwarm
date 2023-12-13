@@ -3,7 +3,7 @@
 # subchart from the chart and install them independently in the hopes that this increases compatibility
 # and reduces maintenance effort in contrast to just directly install from the Prometheus Operator repo
 ---
-apiVersion: helm.toolkit.fluxcd.io/v2beta1
+apiVersion: helm.toolkit.fluxcd.io/v2beta2
 kind: HelmRelease
 metadata:
   name: grafana-k8s-monitoring-prometheus-crds
