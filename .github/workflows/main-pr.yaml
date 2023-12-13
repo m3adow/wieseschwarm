@@ -1,0 +1,20 @@
+---
+name: main-mr
+
+# yamllint disable-line rule:truthy
+on:
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  checks:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Check Commit Messages for FIXUPs or WIPs
+        uses: giner/check-commits@v1.0.1
+        with:
+          regex_filter: "(FIXUP|WIP)"
