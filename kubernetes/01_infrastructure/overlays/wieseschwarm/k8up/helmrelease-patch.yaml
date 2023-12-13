@@ -1,0 +1,24 @@
+---
+apiVersion: helm.toolkit.fluxcd.io/v2beta1
+kind: HelmRelease
+metadata:
+  name: k8up
+spec:
+  # The K8up helm chart is not very useful at the moment, as it's using the `deployment.spec.template.spec.containers.env` field
+  # for configuring the environment. Thusly, we patch the Deployment directly with a Secret which contains our env configuration.
+  postRenderers:
+    - kustomize:
+        patchesStrategicMerge:
+          - kind: Deployment
+            apiVersion: apps/v1
+            metadata:
+              name: k8up
+            spec:
+              template:
+                spec:
+                  containers:
+                    - name: k8up-operator
+                      envFrom:
+                        - secretRef:
+                            name: k8up-operator-env-vars
+                            optional: false

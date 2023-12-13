@@ -15,7 +15,9 @@ resources:
   - helm-repositories/jetstack.yaml
   - helm-repositories/k8up.yaml
   - helm-repositories/kloeckner.yaml
+  - helm-repositories/metrics-server.yaml
   - helm-repositories/mysql.yaml
   - helm-repositories/nextcloud.yaml
   - helm-repositories/ingress-nginx.yaml
   - helm-repositories/openebs-jiva.yaml
+  - helm-repositories/prometheus-community.yaml

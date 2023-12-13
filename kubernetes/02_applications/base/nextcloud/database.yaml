@@ -1,0 +1,13 @@
+---
+apiVersion: kci.rocks/v1beta1
+kind: Database
+metadata:
+  name: nextcloud
+spec:
+  secretName: mysql-credentials
+  instance: mysql-main
+  # Preserve DB if this object is deleted
+  deletionProtected: true
+  backup:
+    enable: false
+    cron: "0 0 * * *" # Required by CRD, although unused
