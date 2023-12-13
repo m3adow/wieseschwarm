@@ -33,14 +33,15 @@ repos:
     rev: v0.2.0
     hooks:
       - id: k8svalidate
+        args: [--exclude, "**/*-patch.yaml"]
         files: .yaml$
         stages: ["pre-push"]
-  - repo: https://github.com/stackrox/kube-linter
-    rev: v0.6.5
-    hooks:
-      - id: kube-linter-docker
 
   # May configure and fix this later
+  # - repo: https://github.com/stackrox/kube-linter
+  #   rev: v0.6.5
+  #   hooks:
+  #     - id: kube-linter-docker
   # - repo: https://github.com/kubevious/cli
   #   rev: v1.0.53
   #   hooks:

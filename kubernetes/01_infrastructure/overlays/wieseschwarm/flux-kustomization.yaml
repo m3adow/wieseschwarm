@@ -153,6 +153,25 @@ spec:
 apiVersion: kustomize.toolkit.fluxcd.io/v1
 kind: Kustomization
 metadata:
+  name: infrastructure-apps-grafana-kube-vip
+  namespace: flux-system
+spec:
+  interval: 0m30s
+  sourceRef:
+    kind: GitRepository
+    name: wieseschwarm
+  path: ./kubernetes/01_infrastructure/overlays/wieseschwarm/kube-vip
+  prune: true
+  timeout: 2m30s
+  wait: true
+  decryption:
+    provider: sops
+    secretRef:
+      name: sops-keys
+---
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
   name: infrastructure-apps-mysql-operator
   namespace: flux-system
 spec:
