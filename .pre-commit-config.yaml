@@ -33,6 +33,7 @@ repos:
     rev: v0.2.0
     hooks:
       - id: k8svalidate
+        args: [--exclude, "**/*-patch.yaml"]
         files: .yaml$
         stages: ["pre-push"]
 
