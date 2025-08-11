@@ -11,7 +11,7 @@ jobs:
   checks:
     runs-on: ubuntu-22.04
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           fetch-depth: 0
       - name: Check Commit Messages for FIXUPs or WIPs
