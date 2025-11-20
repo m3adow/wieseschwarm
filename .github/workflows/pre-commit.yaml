@@ -10,7 +10,7 @@ jobs:
     # ubuntu-latest uses python 3.12 which removes distutils which are still used by k8svalidate
     runs-on: ubuntu-20.04
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - uses: actions/setup-python@v5
       # Run default hooks (in case pre-commit wasn't installed on commiters side)
       - uses: pre-commit/action@v3.0.0
