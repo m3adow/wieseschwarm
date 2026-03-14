@@ -1,0 +1,8 @@
+---
+# This patch is for node wieseschwarm-2 only as it does not have a 2 TB NVMe,
+# so we use the 500GB SSD as Kubernetes storage instead.
+machine:
+  install:
+    diskSelector:
+      model: SAMSUNG MZVLW256HEHP-000L7*
+      type: nvme
