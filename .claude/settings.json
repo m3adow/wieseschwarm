@@ -1,0 +1,25 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(kubectl -n piraeus-system get pods)",
+      "Bash(kustomize build *)",
+      "Bash(kubectl get *)",
+      "Bash(talosctl config *)",
+      "Bash(kubectl explain *)"
+    ]
+  },
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "jq -r '.tool_input.file_path // empty' | { read -r f || exit 0; [[ \"$f\" == *.yaml ]] || exit 0; [[ \"$f\" =~ /talos/ ]] || exit 0; cd /home/m3adow/Nextcloud/projects/wieseschwarm && pre-commit run --files \"$(realpath --relative-to=/home/m3adow/Nextcloud/projects/wieseschwarm \"$f\")\"; }",
+            "timeout": 60
+          }
+        ]
+      }
+    ]
+  }
+}
