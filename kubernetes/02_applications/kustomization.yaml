@@ -6,5 +6,6 @@ namespace: argocd
 
 resources:
   - argocd-app.yaml
-  # piraeus-operator-app.yaml and piraeus-datastore-app.yaml are stubs (comment-only).
-  # Add them here when Tasks 7 and 8 replace them with real Application CRs.
+  - piraeus-operator-app.yaml
+  # piraeus-datastore-app.yaml is a stub (comment-only).
+  # Add it here when Task 8 replaces it with a real Application CR.
