@@ -2,35 +2,7 @@
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: piraeus-operator
-  namespace: argocd
-  finalizers:
-    - resources-finalizer.argocd.argoproj.io
-spec:
-  project: default
-  source:
-    repoURL: https://piraeus.io/helm-charts/
-    chart: piraeus-operator
-    targetRevision: 2.7.0
-    helm:
-      values: |
-        operator:
-          replicas: 1
-  destination:
-    server: https://kubernetes.default.svc
-    namespace: piraeus-system
-  syncPolicy:
-    automated:
-      prune: true
-      selfHeal: true
-    syncOptions:
-      - CreateNamespace=true
-      - ServerSideApply=true
----
-apiVersion: argoproj.io/v1alpha1
-kind: Application
-metadata:
-  name: piraeus-datastore
+  name: piraeus
   namespace: argocd
   finalizers:
     - resources-finalizer.argocd.argoproj.io
@@ -42,10 +14,10 @@ spec:
     path: kubernetes/01_infrastructure/piraeus
   destination:
     server: https://kubernetes.default.svc
-    namespace: piraeus-system
+    namespace: piraeus-datastore
   syncPolicy:
     automated:
       prune: true
       selfHeal: true
     syncOptions:
-      - ServerSideApply=true
+      - CreateNamespace=true
