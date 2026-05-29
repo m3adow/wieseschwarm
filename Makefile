@@ -35,8 +35,8 @@ argocd-repo-configure:
 
 .PHONY: argocd-apps-bootstrap
 argocd-apps-bootstrap:
-	kubectl apply -f kubernetes/02_applications/argocd-app.yaml
-	@echo "Root App of Apps applied. ArgoCD will sync all child Applications once commits are pushed."
+	kubectl apply -f kubernetes/apps-of-apps.yaml
+	@echo "Root App of Apps applied. ArgoCD will sync all child Applications."
 
 .PHONY: argocd-password
 argocd-password:

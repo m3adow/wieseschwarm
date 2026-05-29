@@ -5,6 +5,5 @@ kind: Kustomization
 namespace: argocd
 
 resources:
-  - argocd-app.yaml
-  - piraeus-operator-app.yaml
-  - piraeus-datastore-app.yaml
+  - 00_bootstrap/argocd/application.yaml
+  - 01_infrastructure/piraeus/application.yaml
