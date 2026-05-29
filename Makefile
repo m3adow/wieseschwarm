@@ -4,8 +4,6 @@ TALOSCONFIG_STATE_DIR = /tmp/talosconfig-dev
 TALOSCONFIG_DEV = /tmp/talosconfig.dev
 TALOSCTL_DEV = talosctl --talosconfig $(TALOSCONFIG_DEV)
 
-export KUBECONFIG := $(KUBECONFIG_DEV)
-
 .PHONY: apply
 apply:
 	# First apply may fail if CRDs are not being applied in time
@@ -16,6 +14,37 @@ apply:
 plan:
 	kubectl kustomize --enable-helm kubernetes/00_init/overlays/init-secrets
 
+.PHONY: argocd-bootstrap
+argocd-bootstrap:
+	kubectl kustomize kubernetes/00_bootstrap/argocd | kubectl apply -f-
+	kubectl -n argocd wait deployment argocd-server --for=condition=Available --timeout=300s
+	$(MAKE) argocd-repo-configure
+	@echo "ArgoCD ready. Initial admin password:"
+	@kubectl -n argocd get secret argocd-initial-admin-secret \
+		-o jsonpath='{.data.password}' | base64 -d && echo
+
+.PHONY: argocd-repo-configure
+argocd-repo-configure:
+	kubectl create -n argocd secret generic repo-wieseschwarm \
+		--from-literal=type=git \
+		--from-literal=url=git@github.com:m3adow/wieseschwarm.git \
+		--from-file=sshPrivateKey=kubernetes/secret/argocd-deploy-key \
+		--save-config --dry-run=client -o yaml | kubectl apply -f -
+	kubectl -n argocd label secret repo-wieseschwarm \
+		argocd.argoproj.io/secret-type=repository --overwrite
+
+.PHONY: argocd-apps-bootstrap
+argocd-apps-bootstrap:
+	kubectl apply -f kubernetes/02_applications/argocd-app.yaml
+	@echo "Root App of Apps applied. ArgoCD will sync all child Applications once commits are pushed."
+
+.PHONY: argocd-password
+argocd-password:
+	@kubectl -n argocd get secret argocd-initial-admin-secret \
+		-o jsonpath='{.data.password}' | base64 -d && echo
+
+
+dev-talosctl dev-cluster-create dev-cluster-destroy dev-cluster-new: export KUBECONFIG := $(KUBECONFIG_DEV)
 
 .PHONY: dev-talosctl
 dev-talosctl:
