@@ -1,0 +1,44 @@
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: argocd-cm
+data:
+  # Argo CD removed the built-in health check for Application resources in v1.8.
+  # Without it, child Applications in an app-of-apps have no health status, so
+  # sync waves between them do not wait for the previous wave's workloads to be
+  # ready. This restores the health check so waves gate as documented in
+  # kubernetes/CLAUDE.md.
+  resource.customizations.health.argoproj.io_Application: |
+    hs = {}
+    hs.status = "Progressing"
+    hs.message = ""
+
+    if obj.status ~= nil then
+      if obj.status.health ~= nil then
+        hs.status = obj.status.health.status
+        if obj.status.health.message ~= nil then
+          hs.message = obj.status.health.message
+        end
+      end
+
+      -- A failed/errored sync operation must gate the wave even when the
+      -- previously deployed resources still report Healthy.
+      if obj.status.operationState ~= nil and obj.status.operationState.phase ~= nil then
+        if obj.status.operationState.phase == "Error" or obj.status.operationState.phase == "Failed" then
+          hs.status = "Degraded"
+          if obj.status.operationState.message ~= nil then
+            hs.message = obj.status.operationState.message
+          end
+        end
+      end
+
+      -- Healthy but OutOfSync means "not yet at the desired state" -- keep
+      -- the next wave waiting.
+      if hs.status == "Healthy" and obj.status.sync ~= nil and obj.status.sync.status ~= nil and obj.status.sync.status ~= "Synced" then
+        hs.status = "Progressing"
+        hs.message = "Sync status: " .. obj.status.sync.status
+      end
+    end
+
+    return hs
