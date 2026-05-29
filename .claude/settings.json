@@ -15,7 +15,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "jq -r '.tool_input.file_path // empty' | { read -r f || exit 0; [[ \"$f\" == *.yaml ]] || exit 0; [[ \"$f\" =~ /talos/ ]] || exit 0; cd /home/m3adow/Nextcloud/projects/wieseschwarm && pre-commit run --files \"$(realpath --relative-to=/home/m3adow/Nextcloud/projects/wieseschwarm \"$f\")\"; }",
+            "command": "jq -r '.tool_input.file_path // empty' | { read -r f || exit 0; [[ \"$f\" == *.yaml ]] || exit 0; [[ \"$f\" =~ /talos/ || \"$f\" =~ /kubernetes/ ]] || exit 0; cd /home/m3adow/Nextcloud/projects/wieseschwarm && pre-commit run --files \"$(realpath --relative-to=/home/m3adow/Nextcloud/projects/wieseschwarm \"$f\")\"; }",
             "timeout": 60
           }
         ]
