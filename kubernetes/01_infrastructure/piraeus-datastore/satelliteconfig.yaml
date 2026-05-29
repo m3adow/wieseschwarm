@@ -1,0 +1,16 @@
+---
+apiVersion: piraeus.io/v1
+kind: LinstorSatelliteConfiguration
+metadata:
+  name: storage-nodes
+spec:
+  nodeSelector:
+    matchLabels:
+      node-role.kubernetes.io/storage: "true"
+  storagePools:
+    - name: pool1
+      lvmThinPool:
+        volumeGroup: ""
+        thinPool: "thinpool"
+        devicePaths:
+          - /dev/nvme0n1

@@ -7,3 +7,5 @@ machine:
     diskSelector:
       model: KINGSTON*
       type: ssd
+  nodeLabels:
+    node-role.kubernetes.io/storage: "true"

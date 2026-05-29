@@ -1,2 +1,23 @@
 ---
-# placeholder
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: piraeus-datastore
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  source:
+    repoURL: git@github.com:m3adow/wieseschwarm.git
+    targetRevision: feature/2026-rework # TODO: Has to be changed to main before merging
+    path: kubernetes/01_infrastructure/piraeus-datastore
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: piraeus-system
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - ServerSideApply=true
