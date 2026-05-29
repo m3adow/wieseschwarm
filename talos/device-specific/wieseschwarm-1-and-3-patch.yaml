@@ -1,6 +1,6 @@
 ---
 # This patch is for nodes wieseschwarm-1 and wieseschwarm-3.
-# Both have a 2 TB NVMe, that as Kubernetes storage. Therefore, install Talos
+# Both have a 2 TB NVMe, that are used as Kubernetes storage. Therefore, install Talos
 # on their Kingston SSDs. As they are different models, only match for "KINGSTON" wildcard.
 machine:
   install:
