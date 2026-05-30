@@ -5,8 +5,11 @@
       "Bash(kustomize build *)",
       "Bash(kubectl get *)",
       "Bash(talosctl config *)",
-      "Bash(kubectl explain *)"
-    ]
+      "Bash(kubectl explain *)",
+      "Bash(cp talos/secret/controlplane.yaml /tmp/controlplane-before.yaml && echo \"Backup done\")",
+      "Bash(grep -Ev '^\\\\s+[A-Za-z0-9+/]{40,}=*\\\\s*$')"
+    ],
+    "additionalDirectories": ["/tmp"]
   },
   "hooks": {
     "PostToolUse": [

@@ -15,6 +15,10 @@ This directory contains only **patches** applied to a generic Talos control plan
 | Sensitive (secrets, IPs, cluster-specific config)              | `talos/secret/`          |
 | Dev cluster overrides                                          | `talos/dev/`             |
 
+## Environment variables
+
+Always source the environment variables in `talos/secret/.env` before running commands as they may be required implicitly.
+
 ## Generating control plane configs
 
 See `talos/CLAUDE.local.md` for the environment variable values.
@@ -28,7 +32,7 @@ cd talos/secret/
 talosctl gen config \
   --output-types controlplane \
   --with-secrets secrets.yaml \
-  $CLUSTER_NAME https://$YOUR_ENDPOINT:6443 \
+  $CLUSTER_NAME https://$CLUSTER_ENDPOINT:6443 \
   --force \
   --config-patch @../wieseschwarm-all-patch.yaml \
   --config-patch @wieseschwarm-all-patch.yaml \
@@ -46,7 +50,7 @@ cd talos/secret/
 talosctl gen config \
   --output-types controlplane \
   --with-secrets secrets.yaml \
-  $CLUSTER_NAME https://$YOUR_ENDPOINT:6443 \
+  $CLUSTER_NAME https://$CLUSTER_ENDPOINT:6443 \
   --force -o controlplane.yaml \
   --config-patch @wieseschwarm-all-patch.yaml \
   --config-patch @../piraeus-patch.yaml \
@@ -77,4 +81,4 @@ Set env vars printed after creation: `export TALOSCONFIG=/tmp/talosconfig.dev KU
 - `wieseschwarm-all-patch.yaml` intentionally sets an impossible install disk (`/dev/doesnotexist`) so Talos refuses to install without an explicit device-specific patch — this prevents accidental disk selection on the wrong node.
 - Nodes 1 and 3 have Kingston SSDs for the OS install (2 TB NVMe reserved for Kubernetes storage). Node 2 uses its Samsung NVMe as the install disk (no separate large storage disk).
 - All nodes are on the same L2 VLAN (`192.168.10.0/24`), which is required for both the Talos built-in VIP and Piraeus DRBD replication.
-- Piraeus schematic: `e048aaf4...`, Talos v1.13.2 (update `piraeus-patch.yaml` when upgrading Talos or changing extensions).
+- Piraeus schematic: `e048aaf4...`, Talos v1.13.3 (update `piraeus-patch.yaml` when upgrading Talos or changing extensions).
