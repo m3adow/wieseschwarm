@@ -17,6 +17,8 @@ This directory contains only **patches** applied to a generic Talos control plan
 
 ## Generating control plane configs
 
+See `talos/CLAUDE.local.md` for the environment variable values.
+
 **Always use `talosctl gen config`, never `talosctl machineconfig patch`.**
 
 `machineconfig patch` appends list fields on every run, causing duplicate kernel modules and extensions.
@@ -28,11 +30,29 @@ talosctl gen config \
   --with-secrets secrets.yaml \
   $CLUSTER_NAME https://$YOUR_ENDPOINT:6443 \
   --force \
+  --config-patch @../wieseschwarm-all-patch.yaml \
   --config-patch @wieseschwarm-all-patch.yaml \
   --config-patch @../piraeus-patch.yaml
 ```
 
-Then manually append the correct device-specific install disk patch for each node before applying.
+Then apply per node — see `talos/CLAUDE.local.md` for the apply commands.
+
+## Regenerating talosconfig
+
+The `talosconfig` client config only needs re-generation when cluster secrets or the API endpoint change. Patches are not needed.
+
+```bash
+cd talos/secret/
+talosctl gen config \
+  --output-types controlplane \
+  --with-secrets secrets.yaml \
+  $CLUSTER_NAME https://$YOUR_ENDPOINT:6443 \
+  --force -o controlplane.yaml \
+  --config-patch @wieseschwarm-all-patch.yaml \
+  --config-patch @../piraeus-patch.yaml \
+  --config-patch @../wieseschwarm-all-patch.yaml \
+  --with-docs=false --with-examples=false
+```
 
 ## Dev cluster
 
