@@ -43,6 +43,17 @@ argocd-password:
 	@kubectl -n argocd get secret argocd-initial-admin-secret \
 		-o jsonpath='{.data.password}' | base64 -d && echo
 
+.PHONY: sops-bootstrap
+sops-bootstrap:
+	@AGE_KEY_FILE=$${SOPS_AGE_KEY_FILE:-$(HOME)/.config/sops/age/keys.txt}; \
+	if [ ! -f "$$AGE_KEY_FILE" ]; then \
+		echo "Error: age key not found at $$AGE_KEY_FILE. Set SOPS_AGE_KEY_FILE to override."; \
+		exit 1; \
+	fi; \
+	kubectl create -n sops-secrets-operator secret generic sops-age-key \
+		--from-file=keys.txt=$$AGE_KEY_FILE \
+		--save-config --dry-run=client -o yaml | kubectl apply -f -
+
 
 dev-talosctl dev-cluster-create dev-cluster-destroy dev-cluster-new: export KUBECONFIG := $(KUBECONFIG_DEV)
 

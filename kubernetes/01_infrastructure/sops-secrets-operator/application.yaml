@@ -1,0 +1,33 @@
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: sops-secrets-operator
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  source:
+    repoURL: https://isindir.github.io/sops-secrets-operator/
+    chart: sops-secrets-operator
+    targetRevision: "0.27.x"
+    helm:
+      releaseName: sops-secrets-operator
+      values: |
+        secretsAsFiles:
+          - name: sops-age-key
+            mountPath: /etc/sops/age
+            secretName: sops-age-key
+        extraEnv:
+          - name: SOPS_AGE_KEY_FILE
+            value: /etc/sops/age/keys.txt
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: sops-secrets-operator
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true

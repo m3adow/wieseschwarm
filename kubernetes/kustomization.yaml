@@ -7,3 +7,4 @@ namespace: argocd
 resources:
   - 00_bootstrap/argocd/application.yaml
   - 01_infrastructure/piraeus/application.yaml
+  - 01_infrastructure/sops-secrets-operator/application.yaml

@@ -1,7 +1,7 @@
 ---
 creation_rules:
   - path_regex: .*values.yaml$
-    age: age17l7vdytw3g9y6780fy0c4ga7a9yhmy4xvhnc4866c0qdr37m9p7qy0a06v
+    age: age1mnmvtkxyzmcfs973tm0tzypq3rgyqelww3h2w92e4navh8zx3e5q60e8wy
   - path_regex: .*.yaml
     encrypted_regex: ^(data|stringData)$
-    age: age17l7vdytw3g9y6780fy0c4ga7a9yhmy4xvhnc4866c0qdr37m9p7qy0a06v
+    age: age1mnmvtkxyzmcfs973tm0tzypq3rgyqelww3h2w92e4navh8zx3e5q60e8wy
