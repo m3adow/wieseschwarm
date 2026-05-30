@@ -18,6 +18,11 @@ machine:
   #     - <search-domain>
 cluster:
   allowSchedulingOnControlPlanes: true
+  network:
+    cni:
+      name: flannel
+      flannel:
+        kubeNetworkPoliciesEnabled: true
   # etcd:
   #   advertisedSubnets: # listenSubnets defaults to advertisedSubnets if not set explicitly
   #     - <cluster-subnet/CIDR>
