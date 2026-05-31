@@ -1,0 +1,18 @@
+---
+# Requires Traefik CRDs; on a fresh bootstrap this will fail until Traefik (wave 2) is up.
+# ArgoCD's self-heal will apply it on the next sync once the CRD exists.
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: argocd-server
+  namespace: argocd
+spec:
+  entryPoints:
+    - websecure
+  routes:
+    - match: Host(`argocd.wieseschwarm.lan`)
+      kind: Rule
+      services:
+        - name: argocd-server
+          port: 80
+  tls: {}
