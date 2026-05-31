@@ -8,6 +8,10 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - `kubernetes_old/` — **deprecated** Flux-based structure; do not edit
 - `talos/` — Talos OS patches; see `talos/CLAUDE.md` for Talos-specific guidance
 
+## Path conventions
+
+Never use absolute paths in `.claude/` config files (settings.json, agent files, skills). Use paths relative to the repository root so the repo works regardless of where it is checked out.
+
 ## YAML conventions
 
 All YAML documents must start with `---` (yamllint `document-start: required`).
@@ -56,7 +60,7 @@ Run locally: `pre-commit run --all-files`
 
 ## SOPS encryption
 
-`.sops.yaml` controls what gets encrypted. Most manifests encrypt only `data`/`stringData` fields; `values.yaml` and `talos/secret/` files are fully encrypted. Never commit unencrypted secrets — the `forbid-secrets` hook catches most cases.
+`.sops.yaml` controls what gets encrypted. Most manifests encrypt only `data`/`stringData` fields; `values.yaml` and `talos/secret/` files are fully encrypted. Never commit unencrypted secrets — the `forbid-secrets` hook catches most cases. For `SopsSecret` CRD naming and encryption scope, see `kubernetes/CLAUDE.md`.
 
 ## Branch and PR conventions
 
