@@ -1,7 +1,15 @@
 ---
 creation_rules:
+  # Helm values files: fully encrypted (may contain arbitrary secret structures)
   - path_regex: .*values.yaml$
     age: age1mnmvtkxyzmcfs973tm0tzypq3rgyqelww3h2w92e4navh8zx3e5q60e8wy
+  # SopsSecret CRDs (naming convention: *-token.yaml): encrypt entire spec block.
+  # SopsSecret stores secrets in spec.secretTemplates[*].{stringData,data}, so
+  # encrypting spec covers all sensitive fields while keeping metadata visible.
+  - path_regex: sopssecret-.*\.yaml$
+    encrypted_regex: ^(spec)$
+    age: age1mnmvtkxyzmcfs973tm0tzypq3rgyqelww3h2w92e4navh8zx3e5q60e8wy
+  # Standard Kubernetes manifests: encrypt only data/stringData fields
   - path_regex: .*.yaml
     encrypted_regex: ^(data|stringData)$
     age: age1mnmvtkxyzmcfs973tm0tzypq3rgyqelww3h2w92e4navh8zx3e5q60e8wy

@@ -19,6 +19,15 @@ spec:
       values: |
         crds:
           enabled: true
+        extraArgs:
+          - --dns01-recursive-nameservers=$(DNS01_NAMESERVERS)
+          - --dns01-recursive-nameservers-only
+        extraEnv:
+          - name: DNS01_NAMESERVERS
+            valueFrom:
+              secretKeyRef:
+                name: cert-manager-dns-resolver
+                key: recursive-nameservers
   destination:
     server: https://kubernetes.default.svc
     namespace: cert-manager
