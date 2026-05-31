@@ -6,4 +6,6 @@ metadata:
   namespace: traefik
 spec:
   defaultCertificate:
-    secretName: wildcard-tls
+    secretName: lan-tls
+  certificates:
+    - secretName: wildcard-tls

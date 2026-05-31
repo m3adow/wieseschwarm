@@ -6,6 +6,22 @@ Kubernetes manifests as well as some Talos Linux configuration manifests intende
 
 For now, the project will use free SaaS offerings where applicable (e.g. for Metrics & Monitoring).
 
+## Planned scope
+
+### Infrastructure
+
+- [x] ArgoCD
+- [x] Piraeus
+- [x] sops-secret-operator
+- [x] traefik Ingress
+- [x] MetalLB
+- [x] cert-manager
+- [ ] [MySQL Operator](https://github.com/mysql/mysql-operator)
+- [ ] [DB-Operator](https://github.com/db-operator/db-operator)
+- [ ] [k8up](https://github.com/k8up-io/k8up)
+
+## _Below the old README for reference_
+
 **Intended infrastructure scope:**
 
 - [x] cert-manager

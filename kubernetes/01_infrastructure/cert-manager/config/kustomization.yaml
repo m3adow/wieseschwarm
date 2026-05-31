@@ -5,5 +5,6 @@ kind: Kustomization
 resources:
   - sopssecret-cloudflare-token.yaml
   - sopssecret-dns-resolver.yaml
+  - clusterissuer-selfsigned.yaml
   - clusterissuer-staging.yaml
   - clusterissuer-production.yaml
