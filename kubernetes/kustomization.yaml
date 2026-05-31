@@ -10,5 +10,6 @@ resources:
   - 01_infrastructure/metallb/config/application.yaml
   - 01_infrastructure/cert-manager/application.yaml
   - 01_infrastructure/traefik/application.yaml
+  - 01_infrastructure/traefik/config/application.yaml
   - 01_infrastructure/piraeus/application.yaml
   - 01_infrastructure/sops-secrets-operator/application.yaml
