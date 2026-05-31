@@ -32,7 +32,13 @@ spec:
             type: LoadBalancer
         ingressRoute:
           dashboard:
-            enabled: false
+            enabled: true
+            matchRule: Host(`traefik.wieseschwarm.lan`)
+            entryPoints:
+              - websecure
+            middlewares:
+              - name: traefik-dashboard-basicauth
+            tls: {}
         deployment:
           replicas: 1
   destination:

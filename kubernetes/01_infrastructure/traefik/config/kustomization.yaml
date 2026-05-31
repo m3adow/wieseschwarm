@@ -6,3 +6,5 @@ resources:
   - wildcard-certificate.yaml
   - wildcard-certificate-lan.yaml
   - default-tls-store.yaml
+  - sopssecret-traefik-dashboard-auth.yaml
+  - middleware-basicauth-dashboard.yaml
