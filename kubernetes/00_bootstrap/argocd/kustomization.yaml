@@ -11,3 +11,5 @@ resources:
 
 patches:
   - path: argocd-server-insecure-patch.yaml
+  - path: argocd-accounts-patch.yaml
+  - path: argocd-rbac-patch.yaml

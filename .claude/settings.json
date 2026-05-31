@@ -11,7 +11,9 @@
       "WebFetch(domain:docs.siderolabs.com)",
       "Bash(cp talos/secret/controlplane.yaml /tmp/controlplane-before.yaml)",
       "mcp__kubernetes__namespaces_list",
-      "mcp__kubernetes__resources_list"
+      "mcp__kubernetes__resources_list",
+      "mcp__argocd__list_applications",
+      "mcp__argocd__list_clusters"
     ],
     "additionalDirectories": ["/tmp"]
   },
