@@ -13,7 +13,11 @@
       "mcp__kubernetes__namespaces_list",
       "mcp__kubernetes__resources_list",
       "mcp__argocd__list_applications",
-      "mcp__argocd__list_clusters"
+      "mcp__argocd__list_clusters",
+      "Bash(helm repo *)",
+      "Bash(helm search *)",
+      "Bash(helm show *)",
+      "mcp__argocd__get_application"
     ],
     "additionalDirectories": ["/tmp"]
   },

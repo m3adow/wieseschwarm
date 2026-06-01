@@ -14,3 +14,8 @@ patches:
   - path: argocd-server-insecure-patch.yaml
   - path: argocd-accounts-patch.yaml
   - path: argocd-rbac-patch.yaml
+  - path: argocd-repo-server-no-submodules-patch.yaml
+  - path: argocd-reloader-annotations-patch.yaml
+    target:
+      kind: Deployment
+      name: "^(argocd-dex-server|argocd-notifications-controller|argocd-repo-server|argocd-server)$"

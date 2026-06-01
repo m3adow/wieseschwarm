@@ -5,9 +5,16 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## Repository layout
 
 - `kubernetes/` — active Kustomize manifests (ArgoCD GitOps); see `kubernetes/CLAUDE.md`
+- `kubernetes/02_applications/apps/` — git submodule pointing to the private `wieseschwarm-applications` repo; contains user-facing application manifests
 - `kubernetes_old/` — **deprecated** Flux-based structure; do not edit
 - `talos/` — Talos OS patches; see `talos/CLAUDE.md`
 - `.claude/` — Claude Code config (skills, agents, hooks, permissions)
+
+The `wieseschwarm-applications` submodule is a **private** GitHub repository. It holds application manifests that must not be public (usernames, internal hostnames, etc.). After cloning this repo, populate the submodule with:
+
+```bash
+git submodule update --init
+```
 
 ## Path conventions
 
