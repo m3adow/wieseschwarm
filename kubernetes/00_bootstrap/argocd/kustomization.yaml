@@ -12,6 +12,6 @@ resources:
 
 patches:
   - path: configmap-patch-argocd-accounts.yaml
+  - path: configmap-patch-argocd-cm.yaml
+  - path: configmap-patch-argocd-cmd-params-cm.yaml
   - path: configmap-patch-argocd-rbac.yaml
-  - path: configmap-patch-argocd-server-insecure.yaml
-  - path: deployment-patch-repo-server-no-submodules.yaml
