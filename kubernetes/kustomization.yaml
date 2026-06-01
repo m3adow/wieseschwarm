@@ -14,4 +14,5 @@ resources:
   - 01_infrastructure/traefik/config/application.yaml
   - 01_infrastructure/piraeus/application.yaml
   - 01_infrastructure/sops-secrets-operator/application.yaml
+  - 01_infrastructure/reloader/application.yaml
   - 02_applications/application.yaml
