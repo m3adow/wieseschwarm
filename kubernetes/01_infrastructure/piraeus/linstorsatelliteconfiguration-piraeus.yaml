@@ -43,3 +43,32 @@ spec:
       lvmThinPool:
         volumeGroup: ""
         thinPool: "thinpool"
+      # source.hostDevices causes Piraeus to prepare the listed raw devices
+      # (pvcreate + vgcreate linstor_thinpool + lvcreate thinpool) before
+      # registering the storage pool with LINSTOR.
+      source:
+        hostDevices:
+          - /dev/nvme0n1
+---
+# wieseschwarm-2 has its OS installed on nvme0n1 (Samsung 256G NVMe).
+# Storage pool uses sda (Crucial 500G SATA SSD) instead.
+# Hostname selector is used rather than storage:true label, which would cause
+# the storage-nodes config above to also match this node and claim nvme0n1.
+apiVersion: piraeus.io/v1
+kind: LinstorSatelliteConfiguration
+metadata:
+  name: storage-node-wieseschwarm-2
+spec:
+  nodeSelector:
+    kubernetes.io/hostname: wieseschwarm-2
+  storagePools:
+    - name: pool1
+      lvmThinPool:
+        volumeGroup: ""
+        thinPool: "thinpool"
+      # source.hostDevices causes Piraeus to prepare the listed raw devices
+      # (pvcreate + vgcreate linstor_thinpool + lvcreate thinpool) before
+      # registering the storage pool with LINSTOR.
+      source:
+        hostDevices:
+          - /dev/sda
