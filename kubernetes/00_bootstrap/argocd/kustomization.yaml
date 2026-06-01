@@ -8,6 +8,7 @@ resources:
   - namespace.yaml
   - https://raw.githubusercontent.com/argoproj/argo-cd/v2.13.3/manifests/install.yaml
   - ingressroute-argocd.yaml
+  - sopssecret-apps-repo.yaml
 
 patches:
   - path: argocd-server-insecure-patch.yaml
