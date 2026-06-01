@@ -11,17 +11,23 @@ resources:
   # Wave 1 — CRD-providing operators; wave-2 config depends on their CRDs
   - 01_infrastructure/cert-manager/application.yaml
   - 01_infrastructure/metallb/application.yaml
+  - 01_infrastructure/mysql-operator/application.yaml
 
   # Wave 2 — operators and config that only need core K8s resources
   - 01_infrastructure/cert-manager/config/application.yaml
   - 01_infrastructure/k8up/application.yaml
   - 01_infrastructure/metallb/config/application.yaml
+  - 01_infrastructure/mysql-operator/config/application.yaml
   - 01_infrastructure/reflector/application.yaml
   - 01_infrastructure/reloader/application.yaml
   - 01_infrastructure/traefik/application.yaml
 
-  # Wave 3 — finalization (TLS store depends on wave-2 certificate)
+  # Wave 3 — finalization + operators needing wave-2 resources
+  - 01_infrastructure/db-operator/application.yaml
   - 01_infrastructure/traefik/config/application.yaml
+
+  # Wave 4 — config depending on wave-3 CRDs
+  - 01_infrastructure/db-operator/config/application.yaml
 
   # No wave — independent operators
   - 01_infrastructure/piraeus/application.yaml

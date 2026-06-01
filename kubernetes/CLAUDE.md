@@ -28,12 +28,13 @@ kubernetes/
 
 Wave annotations control ArgoCD rollout order within a sync operation:
 
-| Wave | Current occupants                                                                   | Purpose                                                |
-| ---- | ----------------------------------------------------------------------------------- | ------------------------------------------------------ |
-| 1    | `cert-manager`, `metallb`                                                           | CRD-providing operators; wave-2 config depends on them |
-| 2    | `cert-manager-config`, `metallb-config`, `traefik`, `reloader`, `reflector`, `k8up` | Operators/config that only need core K8s resources     |
-| 3    | `traefik-config`                                                                    | Finalize (e.g., TLS store depends on certificate)      |
-| —    | `argocd`, `piraeus`, `sops-secrets-operator`                                        | No wave; bootstrap or independent                      |
+| Wave | Current occupants                                                                                            | Purpose                                                |
+| ---- | ------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------ |
+| 1    | `cert-manager`, `metallb`, `mysql-operator`                                                                  | CRD-providing operators; wave-2 config depends on them |
+| 2    | `cert-manager-config`, `metallb-config`, `traefik`, `reloader`, `reflector`, `k8up`, `mysql-operator-config` | Operators/config that only need core K8s resources     |
+| 3    | `traefik-config`, `db-operator`                                                                              | Finalize + operators needing wave-2 resources          |
+| 4    | `db-operator-config`                                                                                         | Config depending on wave-3 CRDs                        |
+| —    | `argocd`, `piraeus`, `sops-secrets-operator`                                                                 | No wave; bootstrap or independent                      |
 
 **Rule of thumb:** Helm chart installs at wave N, their Kustomize config at wave N+1. If a resource depends on a CRD installed by wave 1, put it at wave 2 or later.
 
@@ -77,6 +78,9 @@ All Helm values are currently inlined in Application specs (`spec.sources[].helm
 | Reloader              | `reloader`              |
 | Reflector             | `reflector`             |
 | k8up                  | `k8up`                  |
+| MySQL Operator        | `mysql-operator`        |
+| MySQL InnoDB Cluster  | `mysql`                 |
+| DB-Operator           | `db-operator`           |
 
 All Applications use `CreateNamespace=true`; ArgoCD creates namespaces on-demand.
 
@@ -121,7 +125,55 @@ reflector.v1.k8s.emberstack.com/reflection-allowed-namespaces: "ns-a,ns-b"
 # Leave reflection-allowed-namespaces empty ("") to allow all namespaces.
 ```
 
-A common use: annotate the wildcard TLS Secret produced by cert-manager so application namespaces can mount the same certificate without duplicating the `Certificate` resource.
+To have Reflector **auto-create** the mirror without a pre-existing target Secret, also add:
+
+```yaml
+reflector.v1.k8s.emberstack.com/reflection-auto-enabled: "true"
+reflector.v1.k8s.emberstack.com/reflection-auto-namespaces: "ns-a,ns-b"
+```
+
+When used inside a `SopsSecret` template, these annotations are SOPS-encrypted in git but decrypted to their original string values in-cluster before Reflector reads them — this is expected.
+
+A common use: annotate the wildcard TLS Secret produced by cert-manager so application namespaces can mount the same certificate without duplicating the `Certificate` resource. Also used to mirror the MySQL admin credentials from `mysql` to `db-operator`.
+
+## Database provisioning (DB-Operator)
+
+Applications request MySQL databases by deploying a `Database` CR in their own namespace. DB-Operator creates a dedicated MySQL user + database on the InnoDB Cluster (`mysql-innodb` DbInstance) and writes credentials into a `Secret` and `ConfigMap` named after `spec.secretName`.
+
+**Request a database:**
+
+```yaml
+---
+apiVersion: kinda.rocks/v1beta1
+kind: Database
+metadata:
+  name: my-app
+  namespace: my-app-namespace
+spec:
+  instance: mysql-innodb
+  secretName: my-app-db-creds
+  deletionProtected: true
+  backup:
+    enable: false
+```
+
+The generated `Secret` (`my-app-db-creds`) contains keys: `DB`, `USER`, `PASSWORD`, `CONNECTION_STRING`.
+The generated `ConfigMap` (same name) contains: `DB_CONN`, `DB_PORT`.
+
+**Add a read-only user on the same database:**
+
+```yaml
+---
+apiVersion: kinda.rocks/v1beta1
+kind: DbUser
+metadata:
+  name: my-app-readonly
+  namespace: my-app-namespace
+spec:
+  databaseRef: my-app
+  secretName: my-app-readonly-creds
+  accessType: readOnly
+```
 
 ## Secrets (SopsSecret)
 

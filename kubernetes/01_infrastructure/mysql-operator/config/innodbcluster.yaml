@@ -1,0 +1,36 @@
+---
+apiVersion: mysql.oracle.com/v2
+kind: InnoDBCluster
+metadata:
+  name: mysql-cluster
+  namespace: mysql
+spec:
+  secretName: mysql-credentials
+  instances: 3
+  tlsUseSelfSigned: true
+  router:
+    instances: 1
+  datadirVolumeClaimTemplate:
+    accessModes:
+      - ReadWriteOnce
+    storageClassName: piraeus-replicated
+    resources:
+      requests:
+        storage: 5Gi
+  backupProfiles:
+    - name: b2-daily
+      dumpInstance:
+        storage:
+          s3:
+            bucketName: "CHANGE_ME_B2_BUCKET_NAME"
+            config: mysql-backup-b2
+            profile: default
+            endpoint: "https://s3.CHANGE_ME_REGION.backblazeb2.com"
+            prefix: "mysql-cluster/"
+  backupSchedules:
+    - name: nightly-b2
+      schedule: "0 2 * * *"
+      timeZone: "Europe/Berlin"
+      backupProfileName: b2-daily
+      deleteBackupData: false
+      enabled: true

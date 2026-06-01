@@ -1,0 +1,17 @@
+---
+apiVersion: kinda.rocks/v1beta1
+kind: DbInstance
+metadata:
+  name: mysql
+spec:
+  adminSecretRef:
+    Name: mysql-credentials
+    Namespace: db-operator
+  backup:
+    bucket: ""
+  engine: mysql
+  generic:
+    host: mysql-cluster.mysql.svc.cluster.local
+    port: 6446
+  monitoring:
+    enabled: false
