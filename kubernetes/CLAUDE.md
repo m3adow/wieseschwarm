@@ -28,12 +28,12 @@ kubernetes/
 
 Wave annotations control ArgoCD rollout order within a sync operation:
 
-| Wave | Current occupants                                                           | Purpose                                                |
-| ---- | --------------------------------------------------------------------------- | ------------------------------------------------------ |
-| 1    | `cert-manager`, `metallb`                                                   | CRD-providing operators; wave-2 config depends on them |
-| 2    | `cert-manager-config`, `metallb-config`, `traefik`, `reloader`, `reflector` | Operators/config that only need core K8s resources     |
-| 3    | `traefik-config`                                                            | Finalize (e.g., TLS store depends on certificate)      |
-| —    | `argocd`, `piraeus`, `sops-secrets-operator`                                | No wave; bootstrap or independent                      |
+| Wave | Current occupants                                                                   | Purpose                                                |
+| ---- | ----------------------------------------------------------------------------------- | ------------------------------------------------------ |
+| 1    | `cert-manager`, `metallb`                                                           | CRD-providing operators; wave-2 config depends on them |
+| 2    | `cert-manager-config`, `metallb-config`, `traefik`, `reloader`, `reflector`, `k8up` | Operators/config that only need core K8s resources     |
+| 3    | `traefik-config`                                                                    | Finalize (e.g., TLS store depends on certificate)      |
+| —    | `argocd`, `piraeus`, `sops-secrets-operator`                                        | No wave; bootstrap or independent                      |
 
 **Rule of thumb:** Helm chart installs at wave N, their Kustomize config at wave N+1. If a resource depends on a CRD installed by wave 1, put it at wave 2 or later.
 
@@ -76,8 +76,24 @@ All Helm values are currently inlined in Application specs (`spec.sources[].helm
 | SOPS Secrets Operator | `sops-secrets-operator` |
 | Reloader              | `reloader`              |
 | Reflector             | `reflector`             |
+| k8up                  | `k8up`                  |
 
 All Applications use `CreateNamespace=true`; ArgoCD creates namespaces on-demand.
+
+## Backups (k8up)
+
+k8up backs up PVCs using restic to Backblaze B2. Schedules are namespace-scoped and live in the `wieseschwarm-applications` submodule alongside their applications.
+
+Each backed-up namespace uses its own dedicated B2 Application Key (scoped to that namespace's bucket) and its own unique restic repo password. Credentials are never shared across namespaces — there is no centralized backup secret in the `k8up` namespace.
+
+Each namespace that contains PVCs to back up needs two files:
+
+- `sopssecret-k8up-b2.yaml` — SopsSecret (encrypted) with the dedicated B2 Application Key ID, Application Key, and restic repo password; decrypts to a Secret named `k8up-b2`
+- `schedule.yaml` — k8up Schedule referencing `k8up-b2` and the B2 S3-compatible endpoint (`https://s3.<region>.backblazeb2.com`)
+
+Full YAML templates are in `kubernetes/01_infrastructure/k8up/CLAUDE.md`.
+
+By default, k8up backs up every PVC in the namespace. To exclude a pod's volumes: annotate the pod with `k8up.io/backup: "false"`.
 
 ## Cluster utilities
 
