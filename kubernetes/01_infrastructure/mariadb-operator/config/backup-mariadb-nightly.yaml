@@ -1,0 +1,26 @@
+---
+apiVersion: k8s.mariadb.com/v1alpha1
+kind: Backup
+metadata:
+  name: mariadb-nightly
+  namespace: mariadb
+spec:
+  mariaDbRef:
+    name: mariadb-cluster
+  schedule:
+    cron: "0 2 * * *"
+    suspend: false
+  maxRetention: 720h
+  storage:
+    s3:
+      bucket: wieseschwarm-mariadb
+      endpoint: s3.eu-central-003.backblazeb2.com
+      prefix: mariadb-cluster/
+      tls:
+        enabled: true
+      accessKeyIdSecretKeyRef:
+        name: mariadb-backup-b2
+        key: access-key-id
+      secretAccessKeySecretKeyRef:
+        name: mariadb-backup-b2
+        key: secret-access-key

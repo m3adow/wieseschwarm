@@ -8,14 +8,19 @@ resources:
   # Bootstrap (no wave)
   - 00_bootstrap/argocd/application-argocd.yaml
 
+  # Wave 0 — CRD-only installs; wave-1 operators depend on these CRDs being present
+  - 01_infrastructure/mariadb-operator/application-mariadb-operator-crds.yaml
+
   # Wave 1 — CRD-providing operators; wave-2 config depends on their CRDs
   - 01_infrastructure/cert-manager/application-cert-manager.yaml
+  - 01_infrastructure/mariadb-operator/application-mariadb-operator.yaml
   - 01_infrastructure/metallb/application-metallb.yaml
   - 01_infrastructure/mysql-operator/application-mysql-operator.yaml
 
   # Wave 2 — operators and config that only need core K8s resources
   - 01_infrastructure/cert-manager/config/application-cert-manager-config.yaml
   - 01_infrastructure/k8up/application-k8up.yaml
+  - 01_infrastructure/mariadb-operator/config/application-mariadb-operator-config.yaml
   - 01_infrastructure/metallb/config/application-metallb-config.yaml
   - 01_infrastructure/mysql-operator/config/application-mysql-operator-config.yaml
   - 01_infrastructure/reflector/application-reflector.yaml

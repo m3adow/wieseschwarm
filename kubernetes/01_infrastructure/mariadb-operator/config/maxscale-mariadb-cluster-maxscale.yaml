@@ -1,0 +1,33 @@
+---
+apiVersion: k8s.mariadb.com/v1alpha1
+kind: MaxScale
+metadata:
+  name: mariadb-cluster-maxscale
+  namespace: mariadb
+spec:
+  mariaDbRef:
+    name: mariadb-cluster
+
+  replicas: 2
+
+  services:
+    - name: rw-router
+      router: readwritesplit
+      listener:
+        port: 3306
+        protocol: MariaDBProtocol
+
+  monitor:
+    module: galeramon
+    interval: 2s
+    cooperativeMonitoring: majority_of_all
+    params:
+      disable_master_failback: "false"
+      available_when_donor: "false"
+      disable_master_role_setting: "false"
+
+  auth:
+    generate: true
+
+  kubernetesService:
+    type: ClusterIP

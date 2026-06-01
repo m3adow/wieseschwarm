@@ -28,13 +28,14 @@ kubernetes/
 
 Wave annotations control ArgoCD rollout order within a sync operation:
 
-| Wave | Current occupants                                                                                            | Purpose                                                |
-| ---- | ------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------ |
-| 1    | `cert-manager`, `metallb`, `mysql-operator`                                                                  | CRD-providing operators; wave-2 config depends on them |
-| 2    | `cert-manager-config`, `metallb-config`, `traefik`, `reloader`, `reflector`, `k8up`, `mysql-operator-config` | Operators/config that only need core K8s resources     |
-| 3    | `traefik-config`, `db-operator`                                                                              | Finalize + operators needing wave-2 resources          |
-| 4    | `db-operator-config`                                                                                         | Config depending on wave-3 CRDs                        |
-| —    | `argocd`, `piraeus`, `sops-secrets-operator`                                                                 | No wave; bootstrap or independent                      |
+| Wave | Current occupants                                                                                                                       | Purpose                                                |
+| ---- | --------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------ |
+| 0    | `mariadb-operator-crds`                                                                                                                 | CRD-only installs; wave-1 operators depend on them     |
+| 1    | `cert-manager`, `metallb`, `mysql-operator`, `mariadb-operator`                                                                         | CRD-providing operators; wave-2 config depends on them |
+| 2    | `cert-manager-config`, `metallb-config`, `traefik`, `reloader`, `reflector`, `k8up`, `mysql-operator-config`, `mariadb-operator-config` | Operators/config that only need core K8s resources     |
+| 3    | `traefik-config`, `db-operator`                                                                                                         | Finalize + operators needing wave-2 resources          |
+| 4    | `db-operator-config`                                                                                                                    | Config depending on wave-3 CRDs                        |
+| —    | `argocd`, `piraeus`, `sops-secrets-operator`                                                                                            | No wave; bootstrap or independent                      |
 
 **Rule of thumb:** Helm chart installs at wave N, their Kustomize config at wave N+1. If a resource depends on a CRD installed by wave 1, put it at wave 2 or later.
 
@@ -67,20 +68,22 @@ All Helm values are currently inlined in Application specs (`spec.sources[].helm
 
 ## Namespace mapping
 
-| Component             | Namespace               |
-| --------------------- | ----------------------- |
-| ArgoCD                | `argocd`                |
-| cert-manager          | `cert-manager`          |
-| MetalLB               | `metallb-system`        |
-| Traefik               | `traefik`               |
-| Piraeus               | `piraeus-datastore`     |
-| SOPS Secrets Operator | `sops-secrets-operator` |
-| Reloader              | `reloader`              |
-| Reflector             | `reflector`             |
-| k8up                  | `k8up`                  |
-| MySQL Operator        | `mysql-operator`        |
-| MySQL InnoDB Cluster  | `mysql`                 |
-| DB-Operator           | `db-operator`           |
+| Component              | Namespace               |
+| ---------------------- | ----------------------- |
+| ArgoCD                 | `argocd`                |
+| cert-manager           | `cert-manager`          |
+| MetalLB                | `metallb-system`        |
+| Traefik                | `traefik`               |
+| Piraeus                | `piraeus-datastore`     |
+| SOPS Secrets Operator  | `sops-secrets-operator` |
+| Reloader               | `reloader`              |
+| Reflector              | `reflector`             |
+| k8up                   | `k8up`                  |
+| MySQL Operator         | `mysql-operator`        |
+| MySQL InnoDB Cluster   | `mysql`                 |
+| MariaDB Operator       | `mariadb-operator`      |
+| MariaDB Galera Cluster | `mariadb`               |
+| DB-Operator            | `db-operator`           |
 
 All Applications use `CreateNamespace=true`; ArgoCD creates namespaces on-demand.
 
@@ -174,6 +177,11 @@ spec:
   secretName: my-app-readonly-creds
   accessType: readOnly
 ```
+
+## Database provisioning (native MariaDB CRDs)
+
+See `kubernetes/01_infrastructure/mariadb-operator/CLAUDE.md` for the full `Database`, `User`,
+and `Grant` CR patterns used to provision per-application MariaDB databases.
 
 ## Secrets (SopsSecret)
 
