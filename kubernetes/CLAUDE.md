@@ -28,14 +28,16 @@ kubernetes/
 
 Wave annotations control ArgoCD rollout order within a sync operation:
 
-| Wave | Current occupants                                  | Purpose                                           |
-| ---- | -------------------------------------------------- | ------------------------------------------------- |
-| 1    | `cert-manager`, `metallb`                          | Install operators/CRDs first                      |
-| 2    | `cert-manager-config`, `metallb-config`, `traefik` | Configure after operators are ready               |
-| 3    | `traefik-config`                                   | Finalize (e.g., TLS store depends on certificate) |
-| —    | `argocd`, `piraeus`, `sops-secrets-operator`       | No wave; bootstrap or independent                 |
+| Wave | Current occupants                                                           | Purpose                                                |
+| ---- | --------------------------------------------------------------------------- | ------------------------------------------------------ |
+| 1    | `cert-manager`, `metallb`                                                   | CRD-providing operators; wave-2 config depends on them |
+| 2    | `cert-manager-config`, `metallb-config`, `traefik`, `reloader`, `reflector` | Operators/config that only need core K8s resources     |
+| 3    | `traefik-config`                                                            | Finalize (e.g., TLS store depends on certificate)      |
+| —    | `argocd`, `piraeus`, `sops-secrets-operator`                                | No wave; bootstrap or independent                      |
 
 **Rule of thumb:** Helm chart installs at wave N, their Kustomize config at wave N+1. If a resource depends on a CRD installed by wave 1, put it at wave 2 or later.
+
+**Wave-1 is reserved for operators whose CRDs are consumed by wave-2 resources.** cert-manager installs the `Certificate` CRD used by `traefik-config`; metallb installs `IPAddressPool`/`L2Advertisement` used by `metallb-config`. Simple operators that install no CRDs (or whose CRDs nothing else depends on) belong at wave 2, not wave 1.
 
 Set waves via annotation on the Application:
 
@@ -72,8 +74,38 @@ All Helm values are currently inlined in Application specs (`spec.sources[].helm
 | Traefik               | `traefik`               |
 | Piraeus               | `piraeus-datastore`     |
 | SOPS Secrets Operator | `sops-secrets-operator` |
+| Reloader              | `reloader`              |
+| Reflector             | `reflector`             |
 
 All Applications use `CreateNamespace=true`; ArgoCD creates namespaces on-demand.
+
+## Cluster utilities
+
+### Reloader
+
+Reloader (Stakater) triggers a rolling restart of Deployments, StatefulSets, and DaemonSets when a referenced ConfigMap or Secret changes. Workloads opt in via annotation on the pod template.
+
+| Annotation                                            | Effect                                            |
+| ----------------------------------------------------- | ------------------------------------------------- |
+| `reloader.stakater.com/auto: "true"`                  | Restart on any referenced ConfigMap/Secret change |
+| `secret.reloader.stakater.com/reload: "my-secret"`    | Restart only when `my-secret` changes             |
+| `configmap.reloader.stakater.com/reload: "my-config"` | Restart only when `my-config` changes             |
+
+Annotations go on the Deployment/StatefulSet/DaemonSet under `spec.template.metadata.annotations`, not on the ConfigMap/Secret itself.
+
+### Reflector
+
+Reflector (Emberstack) automatically mirrors Secrets and ConfigMaps from a source namespace to target namespaces. The source resource must be annotated; Reflector creates and keeps the copies in sync.
+
+Required annotations on the source Secret/ConfigMap:
+
+```yaml
+reflector.v1.k8s.emberstack.com/reflection-allowed: "true"
+reflector.v1.k8s.emberstack.com/reflection-allowed-namespaces: "ns-a,ns-b"
+# Leave reflection-allowed-namespaces empty ("") to allow all namespaces.
+```
+
+A common use: annotate the wildcard TLS Secret produced by cert-manager so application namespaces can mount the same certificate without duplicating the `Certificate` resource.
 
 ## Secrets (SopsSecret)
 
