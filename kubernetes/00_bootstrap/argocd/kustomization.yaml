@@ -5,17 +5,13 @@ kind: Kustomization
 namespace: argocd
 
 resources:
-  - namespace.yaml
+  - namespace-argocd.yaml
   - https://raw.githubusercontent.com/argoproj/argo-cd/v2.13.3/manifests/install.yaml
   - ingressroute-argocd.yaml
   - sopssecret-apps-repo.yaml
 
 patches:
-  - path: argocd-server-insecure-patch.yaml
-  - path: argocd-accounts-patch.yaml
-  - path: argocd-rbac-patch.yaml
-  - path: argocd-repo-server-no-submodules-patch.yaml
-  - path: argocd-reloader-annotations-patch.yaml
-    target:
-      kind: Deployment
-      name: "^(argocd-dex-server|argocd-notifications-controller|argocd-repo-server|argocd-server)$"
+  - path: configmap-patch-argocd-accounts.yaml
+  - path: configmap-patch-argocd-rbac.yaml
+  - path: configmap-patch-argocd-server-insecure.yaml
+  - path: deployment-patch-repo-server-no-submodules.yaml

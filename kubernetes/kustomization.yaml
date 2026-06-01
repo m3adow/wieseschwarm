@@ -6,32 +6,32 @@ namespace: argocd
 
 resources:
   # Bootstrap (no wave)
-  - 00_bootstrap/argocd/application.yaml
+  - 00_bootstrap/argocd/application-argocd.yaml
 
   # Wave 1 — CRD-providing operators; wave-2 config depends on their CRDs
-  - 01_infrastructure/cert-manager/application.yaml
-  - 01_infrastructure/metallb/application.yaml
-  - 01_infrastructure/mysql-operator/application.yaml
+  - 01_infrastructure/cert-manager/application-cert-manager.yaml
+  - 01_infrastructure/metallb/application-metallb.yaml
+  - 01_infrastructure/mysql-operator/application-mysql-operator.yaml
 
   # Wave 2 — operators and config that only need core K8s resources
-  - 01_infrastructure/cert-manager/config/application.yaml
-  - 01_infrastructure/k8up/application.yaml
-  - 01_infrastructure/metallb/config/application.yaml
-  - 01_infrastructure/mysql-operator/config/application.yaml
-  - 01_infrastructure/reflector/application.yaml
-  - 01_infrastructure/reloader/application.yaml
-  - 01_infrastructure/traefik/application.yaml
+  - 01_infrastructure/cert-manager/config/application-cert-manager-config.yaml
+  - 01_infrastructure/k8up/application-k8up.yaml
+  - 01_infrastructure/metallb/config/application-metallb-config.yaml
+  - 01_infrastructure/mysql-operator/config/application-mysql-operator-config.yaml
+  - 01_infrastructure/reflector/application-reflector.yaml
+  - 01_infrastructure/reloader/application-reloader.yaml
+  - 01_infrastructure/traefik/application-traefik.yaml
 
   # Wave 3 — finalization + operators needing wave-2 resources
-  - 01_infrastructure/db-operator/application.yaml
-  - 01_infrastructure/traefik/config/application.yaml
+  - 01_infrastructure/db-operator/application-db-operator.yaml
+  - 01_infrastructure/traefik/config/application-traefik-config.yaml
 
   # Wave 4 — config depending on wave-3 CRDs
-  - 01_infrastructure/db-operator/config/application.yaml
+  - 01_infrastructure/db-operator/config/application-db-operator-config.yaml
 
   # No wave — independent operators
-  - 01_infrastructure/piraeus/application.yaml
-  - 01_infrastructure/sops-secrets-operator/application.yaml
+  - 01_infrastructure/piraeus/application-piraeus.yaml
+  - 01_infrastructure/sops-secrets-operator/application-sops-secrets-operator.yaml
 
   # Applications
-  - 02_applications/application.yaml
+  - 02_applications/application-wieseschwarm-apps.yaml

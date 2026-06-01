@@ -183,6 +183,24 @@ Files containing `SopsSecret` CRDs **must** be named `sopssecret-<descriptive-na
 
 The SOPS operator (in `sops-secrets-operator` namespace) decrypts them at runtime using the age key mounted from secret `sops-age-key`.
 
+## File naming conventions
+
+All YAML files in `kubernetes/` follow `<kind>-[patch-]<descriptive-name>.yaml`:
+
+| Part                 | Rule                                                                                                                                       |
+| -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
+| `<kind>`             | Lowercased Kubernetes `kind` verbatim — `configmap`, `application`, `ingressroute`, `linstorsatelliteconfiguration`, etc. No abbreviation. |
+| `-patch-`            | Added after `<kind>` when the file is a Kustomize strategic-merge or JSON6902 patch.                                                       |
+| `<descriptive-name>` | Kebab-case; typically matches `metadata.name` of the contained resource.                                                                   |
+
+`kustomization.yaml` is excluded — it is the Kustomize entry point, not a resource file.
+
+The `sopssecret-*` prefix satisfies both this convention and the `.sops.yaml` encryption rule (see Secrets section above).
+
+**Kustomization lists:** `resources` and `patches` lists in `kustomization.yaml` files must be sorted alphabetically within their logical groups. The wave sections in `kubernetes/kustomization.yaml` are logical groups — sort within each group, not across groups.
+
+**ConfigMap data:** Keys in `data:` blocks of `ConfigMap` files must be sorted alphabetically.
+
 ## Build commands
 
 ```bash
