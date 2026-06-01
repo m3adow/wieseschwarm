@@ -5,16 +5,27 @@ kind: Kustomization
 namespace: argocd
 
 resources:
+  # Bootstrap (no wave)
   - 00_bootstrap/argocd/application.yaml
-  - 01_infrastructure/metallb/application.yaml
-  - 01_infrastructure/metallb/config/application.yaml
+
+  # Wave 1 — CRD-providing operators; wave-2 config depends on their CRDs
   - 01_infrastructure/cert-manager/application.yaml
+  - 01_infrastructure/metallb/application.yaml
+
+  # Wave 2 — operators and config that only need core K8s resources
   - 01_infrastructure/cert-manager/config/application.yaml
+  - 01_infrastructure/k8up/application.yaml
+  - 01_infrastructure/metallb/config/application.yaml
+  - 01_infrastructure/reflector/application.yaml
+  - 01_infrastructure/reloader/application.yaml
   - 01_infrastructure/traefik/application.yaml
+
+  # Wave 3 — finalization (TLS store depends on wave-2 certificate)
   - 01_infrastructure/traefik/config/application.yaml
+
+  # No wave — independent operators
   - 01_infrastructure/piraeus/application.yaml
   - 01_infrastructure/sops-secrets-operator/application.yaml
-  - 01_infrastructure/k8up/application.yaml
-  - 01_infrastructure/reloader/application.yaml
-  - 01_infrastructure/reflector/application.yaml
+
+  # Applications
   - 02_applications/application.yaml
