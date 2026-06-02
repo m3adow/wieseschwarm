@@ -15,6 +15,7 @@ resources:
   - 01_infrastructure/cert-manager/application-cert-manager.yaml
   - 01_infrastructure/mariadb-operator/application-mariadb-operator.yaml
   - 01_infrastructure/metallb/application-metallb.yaml
+  - 01_infrastructure/vpa/application-vpa.yaml
 
   # Wave 2 — operators and config that only need core K8s resources
   - 01_infrastructure/cert-manager/config/application-cert-manager-config.yaml
@@ -23,6 +24,7 @@ resources:
   - 01_infrastructure/k8up/application-k8up.yaml
   - 01_infrastructure/mariadb-operator/config/application-mariadb-operator-config.yaml
   - 01_infrastructure/metallb/config/application-metallb-config.yaml
+  - 01_infrastructure/metrics-server/application-metrics-server.yaml
   - 01_infrastructure/reflector/application-reflector.yaml
   - 01_infrastructure/reloader/application-reloader.yaml
   - 01_infrastructure/traefik/application-traefik.yaml

@@ -1,0 +1,36 @@
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: vpa
+  namespace: argocd
+  annotations:
+    # Wave 1: VPA installs VerticalPodAutoscaler CRDs. Wave-2 config apps may create
+    # VerticalPodAutoscaler objects, so the CRDs must be present before wave 2 runs.
+    argocd.argoproj.io/sync-wave: "1"
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  source:
+    repoURL: https://kubernetes.github.io/autoscaler
+    chart: vertical-pod-autoscaler
+    targetRevision: "0.x"
+    helm:
+      releaseName: vpa
+      values: |
+        recommender:
+          replicaCount: 1
+        updater:
+          replicaCount: 1
+        admissionController:
+          replicaCount: 1
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: vpa
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true

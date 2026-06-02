@@ -1,0 +1,33 @@
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: metrics-server
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  source:
+    repoURL: https://kubernetes-sigs.github.io/metrics-server/
+    chart: metrics-server
+    targetRevision: "3.x"
+    helm:
+      releaseName: metrics-server
+      values: |
+        # Talos kubelets use self-signed certificates; metrics-server cannot verify them
+        # without kubelet certificate rotation enabled. --kubelet-insecure-tls skips this
+        # check. See: https://docs.siderolabs.com/kubernetes-guides/monitoring-and-observability/deploy-metrics-server
+        args:
+          - --kubelet-insecure-tls
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: metrics-server
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true

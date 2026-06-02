@@ -28,13 +28,13 @@ kubernetes/
 
 Wave annotations control ArgoCD rollout order within a sync operation:
 
-| Wave | Current occupants                                                                                              | Purpose                                                |
-| ---- | -------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------ |
-| 0    | `mariadb-operator-crds`                                                                                        | CRD-only installs; wave-1 operators depend on them     |
-| 1    | `cert-manager`, `metallb`, `mariadb-operator`                                                                  | CRD-providing operators; wave-2 config depends on them |
-| 2    | `cert-manager-config`, `metallb-config`, `traefik`, `reloader`, `reflector`, `k8up`, `mariadb-operator-config` | Operators/config that only need core K8s resources     |
-| 3    | `traefik-config`                                                                                               | Finalize + config needing wave-2 resources             |
-| —    | `argocd`, `piraeus`, `sops-secrets-operator`                                                                   | No wave; bootstrap or independent                      |
+| Wave | Current occupants                                                                                                                | Purpose                                                |
+| ---- | -------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------ |
+| 0    | `mariadb-operator-crds`                                                                                                          | CRD-only installs; wave-1 operators depend on them     |
+| 1    | `cert-manager`, `metallb`, `mariadb-operator`, `vpa`                                                                             | CRD-providing operators; wave-2 config depends on them |
+| 2    | `cert-manager-config`, `metallb-config`, `traefik`, `reloader`, `reflector`, `k8up`, `mariadb-operator-config`, `metrics-server` | Operators/config that only need core K8s resources     |
+| 3    | `traefik-config`                                                                                                                 | Finalize + config needing wave-2 resources             |
+| —    | `argocd`, `piraeus`, `sops-secrets-operator`                                                                                     | No wave; bootstrap or independent                      |
 
 **Rule of thumb:** Helm chart installs at wave N, their Kustomize config at wave N+1. If a resource depends on a CRD installed by wave 1, put it at wave 2 or later.
 
@@ -72,7 +72,9 @@ All Helm values are currently inlined in Application specs (`spec.sources[].helm
 | ArgoCD                 | `argocd`                |
 | cert-manager           | `cert-manager`          |
 | MetalLB                | `metallb-system`        |
+| Metrics Server         | `metrics-server`        |
 | Traefik                | `traefik`               |
+| VPA                    | `vpa`                   |
 | Piraeus                | `piraeus-datastore`     |
 | SOPS Secrets Operator  | `sops-secrets-operator` |
 | Reloader               | `reloader`              |
