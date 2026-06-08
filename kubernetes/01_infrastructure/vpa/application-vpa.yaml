@@ -19,6 +19,8 @@ spec:
     helm:
       releaseName: vpa
       values: |
+        # Pin to 1 replica per component; chart default is 1 but explicit to prevent
+        # a future chart default change from scaling up in a homelab environment.
         recommender:
           replicaCount: 1
         updater:

@@ -38,7 +38,7 @@ Wave annotations control ArgoCD rollout order within a sync operation:
 
 **Rule of thumb:** Helm chart installs at wave N, their Kustomize config at wave N+1. If a resource depends on a CRD installed by wave 1, put it at wave 2 or later.
 
-**Wave-1 is reserved for operators whose CRDs are consumed by wave-2 resources.** cert-manager installs the `Certificate` CRD used by `traefik-config`; metallb installs `IPAddressPool`/`L2Advertisement` used by `metallb-config`. Simple operators that install no CRDs (or whose CRDs nothing else depends on) belong at wave 2, not wave 1.
+**Wave-1 is reserved for operators whose CRDs are consumed by wave-2 resources.** cert-manager installs the `Certificate` CRD used by `traefik-config`; metallb installs `IPAddressPool`/`L2Advertisement` used by `metallb-config`. Simple operators that install no CRDs (or whose CRDs nothing else depends on) belong at wave 2, not wave 1. Exception: operators may be pre-registered at wave 1 when their CRDs are _anticipated_ to be consumed by future wave-2 config apps — document the rationale in the Application's sync-wave annotation comment.
 
 Set waves via annotation on the Application:
 
