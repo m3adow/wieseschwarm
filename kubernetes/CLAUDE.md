@@ -134,7 +134,7 @@ reflector.v1.k8s.emberstack.com/reflection-auto-enabled: "true"
 reflector.v1.k8s.emberstack.com/reflection-auto-namespaces: "ns-a,ns-b"
 ```
 
-When used inside a `SopsSecret` template, these annotations are SOPS-encrypted in git but decrypted to their original string values in-cluster before Reflector reads them — this is expected.
+When used inside a `SopsSecret` template, these annotations are stored as plaintext in git (only `stringData`/`data` values are encrypted) and are visible to Reflector after the SOPS operator creates the underlying Secret.
 
 A common use: annotate the wildcard TLS Secret produced by cert-manager so application namespaces can mount the same certificate without duplicating the `Certificate` resource.
 
@@ -147,9 +147,11 @@ and `Grant` CR patterns used to provision per-application MariaDB databases.
 
 Files containing `SopsSecret` CRDs **must** be named `sopssecret-<descriptive-name>.yaml` (e.g. `sopssecret-cloudflare-token.yaml`).
 
-`.sops.yaml` has a dedicated rule matching `sopssecret-.*\.yaml` that encrypts only the `spec` block — the right scope for `SopsSecret`, which stores sensitive data in `spec.secretTemplates[*].{stringData,data}`. Files that do not match this pattern fall through to the generic rule and encrypt only `data`/`stringData`, which **does not cover** `SopsSecret` payloads and will leave secrets unencrypted.
+`.sops.yaml` has a dedicated rule matching `sopssecret-.*\.yaml` that encrypts only `stringData` and `data` keys — the actual secret values within `spec.secretTemplates[*]`. Non-sensitive fields like template names and labels remain readable in git. Files that do not match this pattern fall through to the generic rule, which also encrypts only `data`/`stringData` — sufficient for SopsSecrets since those keys are the same ones that carry the secrets.
 
 The SOPS operator (in `sops-secrets-operator` namespace) decrypts them at runtime using the age key mounted from secret `sops-age-key`.
+
+**NEVER run `sops --decrypt` or any equivalent command to read secret contents.** If a secret file needs to be modified (e.g. adding a field or label), tell the user exactly what change is needed and let them perform the decryption, editing, and re-encryption themselves.
 
 ## File naming conventions
 

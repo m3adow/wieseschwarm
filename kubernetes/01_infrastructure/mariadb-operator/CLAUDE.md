@@ -39,7 +39,9 @@ spec:
   collate: utf8mb4_unicode_ci
 ```
 
-**2. Create the user (`User` CR) — operator generates the password Secret:**
+**2. Create the user (`User` CR):**
+
+The password Secret must already exist before applying this CR — the operator does not generate it (unlike `MariaDB.spec.rootPasswordSecretKeyRef`). Provide it via a `SopsSecret` labeled `k8s.mariadb.com/watch: ""` so the operator detects password rotations.
 
 ```yaml
 ---
@@ -55,10 +57,7 @@ spec:
   passwordSecretKeyRef:
     name: my-app-mariadb-user
     key: password
-    generate: true
 ```
-
-The operator creates a Secret named `my-app-mariadb-user` with key `password` in `my-app-namespace`.
 
 **3. Grant privileges (`Grant` CR):**
 
