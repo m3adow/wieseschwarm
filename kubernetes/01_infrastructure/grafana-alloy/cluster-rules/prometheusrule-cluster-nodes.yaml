@@ -1,0 +1,59 @@
+---
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: cluster-nodes
+  namespace: monitoring
+  labels:
+    app.kubernetes.io/part-of: grafana-alloy
+spec:
+  groups:
+    - name: nodes.warning
+      interval: 5m
+      rules:
+        - alert: NodeMemoryWarning
+          expr: node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes < 0.15
+          for: 10m
+          labels:
+            severity: warning
+          annotations:
+            summary: "Node {{ $labels.instance }} memory low ({{ $value | humanizePercentage }} free)"
+
+        - alert: NodeDiskWarning
+          expr: |
+            node_filesystem_avail_bytes{mountpoint="/"}
+            / node_filesystem_size_bytes{mountpoint="/"} < 0.20
+          for: 10m
+          labels:
+            severity: warning
+          annotations:
+            summary: "Node {{ $labels.instance }} root disk at {{ $value | humanizePercentage }} free"
+
+    - name: nodes.critical
+      interval: 1m
+      rules:
+        - alert: NodeMemoryCritical
+          expr: node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes < 0.05
+          for: 5m
+          labels:
+            severity: critical
+          annotations:
+            summary: "Node {{ $labels.instance }} memory critical ({{ $value | humanizePercentage }} free)"
+
+        - alert: NodeNotReady
+          expr: kube_node_status_condition{condition="Ready",status="true"} == 0
+          for: 2m
+          labels:
+            severity: critical
+          annotations:
+            summary: "Node {{ $labels.node }} is NotReady"
+
+        - alert: NodeDiskCritical
+          expr: |
+            node_filesystem_avail_bytes{mountpoint="/"}
+            / node_filesystem_size_bytes{mountpoint="/"} < 0.10
+          for: 5m
+          labels:
+            severity: critical
+          annotations:
+            summary: "Node {{ $labels.instance }} root disk critical ({{ $value | humanizePercentage }} free)"

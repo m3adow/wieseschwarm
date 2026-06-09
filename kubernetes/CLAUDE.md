@@ -30,7 +30,7 @@ Wave annotations control ArgoCD rollout order within a sync operation:
 
 | Wave | Current occupants                                                                                                                | Purpose                                                |
 | ---- | -------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------ |
-| 0    | `mariadb-operator-crds`                                                                                                          | CRD-only installs; wave-1 operators depend on them     |
+| 0    | `mariadb-operator-crds`, `prometheus-operator-crds`                                                                              | CRD-only installs; wave-1 operators depend on them     |
 | 1    | `cert-manager`, `metallb`, `mariadb-operator`, `vpa`                                                                             | CRD-providing operators; wave-2 config depends on them |
 | 2    | `cert-manager-config`, `metallb-config`, `traefik`, `reloader`, `reflector`, `k8up`, `mariadb-operator-config`, `metrics-server` | Operators/config that only need core K8s resources     |
 | 3    | `traefik-config`                                                                                                                 | Finalize + config needing wave-2 resources             |
@@ -71,6 +71,7 @@ All Helm values are currently inlined in Application specs (`spec.sources[].helm
 | ---------------------- | ----------------------- |
 | ArgoCD                 | `argocd`                |
 | cert-manager           | `cert-manager`          |
+| Grafana Alloy          | `monitoring`            |
 | MetalLB                | `metallb-system`        |
 | Metrics Server         | `metrics-server`        |
 | Traefik                | `traefik`               |

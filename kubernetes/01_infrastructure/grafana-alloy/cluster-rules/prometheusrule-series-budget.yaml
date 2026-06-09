@@ -1,0 +1,27 @@
+---
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: series-budget
+  namespace: monitoring
+  labels:
+    app.kubernetes.io/part-of: grafana-alloy
+spec:
+  groups:
+    - name: alloy.budget
+      interval: 15m
+      rules:
+        - alert: MetricSeriesBudgetWarning
+          expr: count({__name__=~".+"}) > 8000
+          for: 30m
+          labels:
+            severity: warning
+          annotations:
+            summary: "Active metric series {{ $value }} approaching free-tier limit (10000)"
+        - alert: MetricSeriesBudgetCritical
+          expr: count({__name__=~".+"}) > 9500
+          for: 15m
+          labels:
+            severity: critical
+          annotations:
+            summary: "Active metric series {{ $value }} about to exceed free-tier limit (10000) — data points will be dropped"

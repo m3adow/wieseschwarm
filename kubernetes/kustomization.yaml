@@ -10,6 +10,7 @@ resources:
 
   # Wave 0 — CRD-only installs; wave-1 operators depend on these CRDs being present
   - 01_infrastructure/mariadb-operator/application-mariadb-operator-crds.yaml
+  - 01_infrastructure/prometheus-operator-crds/application-prometheus-operator-crds.yaml
 
   # Wave 1 — CRD-providing operators; wave-2 config depends on their CRDs
   - 01_infrastructure/cert-manager/application-cert-manager.yaml
@@ -20,6 +21,7 @@ resources:
   # Wave 2 — operators and config that only need core K8s resources
   - 01_infrastructure/cert-manager/config/application-cert-manager-config.yaml
   - 01_infrastructure/grafana-alloy/application-grafana-alloy.yaml
+  - 01_infrastructure/grafana-alloy/application-grafana-alloy-rules.yaml
   - 01_infrastructure/grafana-alloy/config/application-grafana-alloy-config.yaml
   - 01_infrastructure/k8up/application-k8up.yaml
   - 01_infrastructure/mariadb-operator/config/application-mariadb-operator-config.yaml

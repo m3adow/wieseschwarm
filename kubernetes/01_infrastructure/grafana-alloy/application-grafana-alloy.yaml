@@ -82,7 +82,21 @@ spec:
         collectors:
           alloy-metrics:
             presets: [clustered, statefulset]
-          alloy-singleton: {}
+          alloy-singleton:
+            extraConfig: |
+              remote.kubernetes.secret "mimir_rules_auth" {
+                name      = "grafana-cloud-credentials"
+                namespace = "monitoring"
+              }
+
+              mimir.rules.kubernetes "sync" {
+                address                = "https://prometheus-prod-65-prod-eu-west-2.grafana.net"
+                prometheus_http_prefix = "/api/prom"
+                basic_auth {
+                  username = convert.nonsensitive(remote.kubernetes.secret.mimir_rules_auth.data["username-prometheus"])
+                  password = remote.kubernetes.secret.mimir_rules_auth.data["password"]
+                }
+              }
 
   destination:
     server: https://kubernetes.default.svc
