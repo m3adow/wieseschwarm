@@ -1,0 +1,30 @@
+---
+apiVersion: k8up.io/v1
+kind: Schedule
+metadata:
+  name: demo-k8up-schedule
+  namespace: demo
+spec:
+  backend:
+    repoPasswordSecretRef:
+      name: k8up-b2
+      key: repository-password
+    b2:
+      bucket: wieseschwarm-demo-backup
+      accountIDSecretRef:
+        name: k8up-b2
+        key: account-id
+      accountKeySecretRef:
+        name: k8up-b2
+        key: account-key
+  backup:
+    # Once per month just to show how backup works
+    schedule: "0 0 1 * *"
+    failedJobsHistoryLimit: 3
+    successfulJobsHistoryLimit: 1
+  prune:
+    schedule: "0 1 1 * *"
+    retention:
+      keepLast: 1
+  check:
+    schedule: "0 0 2 * *"

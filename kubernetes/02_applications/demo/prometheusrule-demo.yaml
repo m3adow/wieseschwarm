@@ -1,0 +1,43 @@
+---
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: demo
+  namespace: demo
+  labels:
+    app: demo
+spec:
+  groups:
+    - name: demo.rules
+      rules:
+        - alert: DemoHighRestartRate
+          expr: |
+            increase(kube_pod_container_status_restarts_total{
+              namespace="demo",
+              container="nginx"
+            }[15m]) > 3
+          for: 0m
+          labels:
+            severity: warning
+          annotations:
+            summary: "Demo nginx container restarting frequently"
+            description: "nginx container has restarted {{ $value }} times in the last 15 minutes."
+        - alert: DemoHtmlPVCNearFull
+          expr: |
+            (
+              kubelet_volume_stats_used_bytes{
+                namespace="demo",
+                persistentvolumeclaim="demo-html"
+              }
+              /
+              kubelet_volume_stats_capacity_bytes{
+                namespace="demo",
+                persistentvolumeclaim="demo-html"
+              }
+            ) > 0.8
+          for: 5m
+          labels:
+            severity: warning
+          annotations:
+            summary: "Demo HTML PVC above 80%"
+            description: "demo-html PVC is {{ $value | humanizePercentage }} full."

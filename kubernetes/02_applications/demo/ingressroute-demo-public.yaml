@@ -1,0 +1,17 @@
+---
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: demo-public
+  namespace: demo
+spec:
+  entryPoints:
+    - websecure
+  routes:
+    - match: Host(`demo.wieseclan.eu.org`)
+      kind: Rule
+      services:
+        - name: demo
+          port: http
+  tls:
+    secretName: demo-public-tls

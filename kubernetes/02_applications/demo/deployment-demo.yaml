@@ -1,0 +1,109 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: demo
+  namespace: demo
+spec:
+  replicas: 1
+  strategy:
+    # Needs to be "Recreate" so the PVC is released before the new pod starts and can be reattached.
+    type: Recreate
+  selector:
+    matchLabels:
+      app: demo
+  template:
+    metadata:
+      labels:
+        app: demo
+      annotations:
+        configmap.reloader.stakater.com/reload: "demo-nginx"
+        secret.reloader.stakater.com/reload: "demo-mariadb-user"
+    spec:
+      initContainers:
+        - name: init-html
+          image: busybox:1.38.0
+          command:
+            - sh
+            - -c
+            - |
+              cat > /html/index.html <<'EOF'
+              <!DOCTYPE html>
+              <html>
+              <head><title>Demo App</title></head>
+              <body>
+              <h1>wieseschwarm demo</h1>
+              <p>PVC mount: /usr/share/nginx/html</p>
+              <p>DB host: mariadb-cluster-maxscale.mariadb.svc.cluster.local</p>
+              </body>
+              </html>
+              EOF
+          volumeMounts:
+            - name: html
+              mountPath: /html
+        - name: init-db
+          image: mariadb:11.8.8
+          command:
+            - sh
+            - -c
+            - |
+              mariadb -h mariadb-cluster-maxscale.mariadb.svc.cluster.local \
+                    -u demo \
+                    -p"${DB_PASSWORD}" \
+                    --skip-ssl \
+                    demo <<'SQL'
+              CREATE TABLE IF NOT EXISTS visits (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                message VARCHAR(255),
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+              );
+              INSERT INTO visits (message) VALUES ('demo app initialized');
+              SQL
+          env:
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: demo-mariadb-user
+                  key: password
+      containers:
+        - name: nginx
+          image: nginx:1.31.1-alpine
+          ports:
+            - name: http
+              containerPort: 80
+            - name: metrics-stub
+              containerPort: 8080
+          volumeMounts:
+            - name: html
+              mountPath: /usr/share/nginx/html
+            - name: nginx-config
+              mountPath: /etc/nginx/nginx.conf
+              subPath: nginx.conf
+          resources:
+            requests:
+              cpu: 20m
+              memory: 32Mi
+            limits:
+              cpu: 200m
+              memory: 128Mi
+        - name: metrics
+          image: nginx/nginx-prometheus-exporter:1.5.1
+          args:
+            - --nginx.scrape-uri=http://localhost:8080/stub_status
+          ports:
+            - name: metrics
+              containerPort: 9113
+          resources:
+            requests:
+              cpu: 5m
+              memory: 16Mi
+            limits:
+              cpu: 50m
+              memory: 64Mi
+      volumes:
+        - name: html
+          persistentVolumeClaim:
+            claimName: demo-html
+        - name: nginx-config
+          configMap:
+            name: demo-nginx

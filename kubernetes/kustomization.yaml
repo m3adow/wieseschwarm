@@ -39,4 +39,5 @@ resources:
   - 01_infrastructure/sops-secrets-operator/application-sops-secrets-operator.yaml
 
   # Applications
+  - 02_applications/application-demo.yaml
   - 02_applications/application-wieseschwarm-apps.yaml
