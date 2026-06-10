@@ -20,14 +20,11 @@ spec:
         crds:
           enabled: true
         extraArgs:
-          - --dns01-recursive-nameservers=$(DNS01_NAMESERVERS)
+          # DNS-01 propagation checks must query a resolver that sees public
+          # DNS, not CoreDNS. As outgoing DNS queries are blocked, explicitly
+          # configure the router IP of the server VLAN
+          - --dns01-recursive-nameservers=192.168.10.1:53
           - --dns01-recursive-nameservers-only
-        extraEnv:
-          - name: DNS01_NAMESERVERS
-            valueFrom:
-              secretKeyRef:
-                name: cert-manager-dns-resolver
-                key: recursive-nameservers
   destination:
     server: https://kubernetes.default.svc
     namespace: cert-manager
