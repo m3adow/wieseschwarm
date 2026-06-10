@@ -43,7 +43,11 @@ instead of the `storage: true` label because adding that label to wieseschwarm-2
 `piraeus-replicated` is the cluster default (`is-default-class: true`):
 
 - `storagePool: pool1` — references the pool name configured above
-- `placementCount: "2"` — each volume gets two DRBD replicas across distinct nodes
+- `placementCount: "2"` — each volume gets two DRBD replicas across distinct nodes. This is a
+  deliberate capacity/durability tradeoff: only two nodes contribute storage, and DRBD adds a
+  diskless tiebreaker on the third node so quorum survives a single node failure. For data that
+  must survive rebuilding a storage node, add a second StorageClass with `placementCount: "3"`
+  once a third storage node exists.
 - `volumeBindingMode: WaitForFirstConsumer` — PVC binding is deferred until a pod is scheduled,
   so LINSTOR can co-locate the primary replica with the consumer pod
 

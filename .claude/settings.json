@@ -24,7 +24,15 @@
       "mcp__kubernetes__resources_get",
       "mcp__argocd__get_application_managed_resources",
       "mcp__kubernetes__pods_log",
-      "Bash(yamllint *)"
+      "Bash(yamllint *)",
+      "Skill(code-review)",
+      "Skill(code-review:*)",
+      "Bash(xargs ls -la)",
+      "Bash(git ls-tree *)",
+      "Bash(git diff *)",
+      "WebFetch(domain:argo-cd.readthedocs.io)",
+      "WebFetch(domain:endoflife.date)",
+      "WebFetch(domain:developers.cloudflare.com)"
     ],
     "additionalDirectories": ["/tmp"]
   },

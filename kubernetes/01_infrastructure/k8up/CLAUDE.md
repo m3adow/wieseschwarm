@@ -19,7 +19,7 @@ Each application namespace uses its own dedicated B2 Application Key and its own
 **Prerequisites (one-time per namespace):**
 
 1. In Backblaze B2, create a dedicated Application Key restricted to that application's backup bucket with capabilities: `readFiles`, `writeFiles`, `deleteFiles`, `listBuckets`, `listFiles`, `readBucketEncryption`. One key per bucket — do not reuse a key across applications.
-2. Note the Key ID and Application Key (shown once). Find the bucket's S3 endpoint under bucket settings: `https://s3.<region>.backblazeb2.com`.
+2. Note the Key ID and Application Key (shown once). The `b2` backend talks to the B2 native API directly — no S3 endpoint is needed.
 3. Generate a unique restic repo password: `openssl rand -base64 32`. Store it safely — backups cannot be restored without it. Do not reuse the same password across namespaces.
 
 **Per namespace: create `sopssecret-k8up-b2.yaml`**
@@ -38,8 +38,8 @@ spec:
     - name: k8up-b2
       stringData:
         repository-password: <restic-repo-encryption-password>
-        access-key-id: <b2-application-key-id>
-        secret-access-key: <b2-application-key>
+        account-id: <b2-application-key-id>
+        account-key: <b2-application-key>
 ```
 
 **Per namespace: create `schedule.yaml`**
@@ -56,15 +56,17 @@ spec:
     repoPasswordSecretRef:
       name: k8up-b2
       key: repository-password
-    s3:
-      endpoint: https://s3.<region>.backblazeb2.com
+    # Use the native b2 backend, not s3: restic's S3 backend does not work
+    # against B2's S3-compatible API in this setup (verified with the demo
+    # app — backups failed until switched to b2).
+    b2:
       bucket: <b2-bucket-name>
-      accessKeyIDSecretRef:
+      accountIDSecretRef:
         name: k8up-b2
-        key: access-key-id
-      secretAccessKeySecretRef:
+        key: account-id
+      accountKeySecretRef:
         name: k8up-b2
-        key: secret-access-key
+        key: account-key
   backup:
     schedule: "0 2 * * *"
     failedJobsHistoryLimit: 3

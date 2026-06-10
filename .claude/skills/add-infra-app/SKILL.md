@@ -84,7 +84,6 @@ spec:
       selfHeal: true
     syncOptions:
       - CreateNamespace=true
-      - ServerSideApply=true
 ```
 
 ### Config Application template (git source)
@@ -113,10 +112,11 @@ spec:
       selfHeal: true
     syncOptions:
       - CreateNamespace=true
-      - ServerSideApply=true
 ```
 
 **Important:** `targetRevision: feature/2026-rework` must be changed to `main` before merging. This is tracked in the pre-merge checklist in `kubernetes/CLAUDE.md`.
+
+**ServerSideApply:** do NOT add `- ServerSideApply=true` to `syncOptions` by default — see "ArgoCD syncOptions" in `kubernetes/CLAUDE.md`. Opt in only when the chart installs CRDs too large for client-side apply (annotation size limit), and pair it with the `argocd.argoproj.io/compare-options: ServerSideDiff=true` annotation (see `k8up/CLAUDE.md` for a documented example).
 
 ## Step 4: Write the config kustomization.yaml (if using config/)
 

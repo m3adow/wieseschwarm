@@ -28,13 +28,14 @@ kubernetes/
 
 Wave annotations control ArgoCD rollout order within a sync operation:
 
-| Wave | Current occupants                                                                                                                | Purpose                                                |
-| ---- | -------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------ |
-| 0    | `mariadb-operator-crds`, `prometheus-operator-crds`                                                                              | CRD-only installs; wave-1 operators depend on them     |
-| 1    | `cert-manager`, `metallb`, `mariadb-operator`, `vpa`                                                                             | CRD-providing operators; wave-2 config depends on them |
-| 2    | `cert-manager-config`, `metallb-config`, `traefik`, `reloader`, `reflector`, `k8up`, `mariadb-operator-config`, `metrics-server` | Operators/config that only need core K8s resources     |
-| 3    | `traefik-config`                                                                                                                 | Finalize + config needing wave-2 resources             |
-| —    | `argocd`, `piraeus`, `sops-secrets-operator`                                                                                     | No wave; bootstrap or independent                      |
+| Wave | Current occupants                                                                                                                                                                                | Purpose                                                |
+| ---- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------ |
+| 0    | `mariadb-operator-crds`, `prometheus-operator-crds`                                                                                                                                              | CRD-only installs; wave-1 operators depend on them     |
+| 1    | `cert-manager`, `metallb`, `mariadb-operator`, `vpa`                                                                                                                                             | CRD-providing operators; wave-2 config depends on them |
+| 2    | `cert-manager-config`, `metallb-config`, `traefik`, `reloader`, `reflector`, `k8up`, `mariadb-operator-config`, `metrics-server`, `grafana-alloy`, `grafana-alloy-rules`, `grafana-alloy-config` | Operators/config that only need core K8s resources     |
+| 3    | `traefik-config`, `cloudflared`, `external-dns`                                                                                                                                                  | Finalize + config needing wave-2 resources             |
+| 4    | `demo`, `wieseschwarm-apps`                                                                                                                                                                      | User-facing applications; need all infrastructure      |
+| —    | `argocd`, `piraeus`, `sops-secrets-operator`                                                                                                                                                     | No wave; bootstrap or independent                      |
 
 **Rule of thumb:** Helm chart installs at wave N, their Kustomize config at wave N+1. If a resource depends on a CRD installed by wave 1, put it at wave 2 or later.
 
@@ -97,7 +98,7 @@ Each backed-up namespace uses its own dedicated B2 Application Key (scoped to th
 Each namespace that contains PVCs to back up needs two files:
 
 - `sopssecret-k8up-b2.yaml` — SopsSecret (encrypted) with the dedicated B2 Application Key ID, Application Key, and restic repo password; decrypts to a Secret named `k8up-b2`
-- `schedule.yaml` — k8up Schedule referencing `k8up-b2` and the B2 S3-compatible endpoint (`https://s3.<region>.backblazeb2.com`)
+- `schedule.yaml` — k8up Schedule using the native `b2` backend referencing `k8up-b2` (do not use the `s3` backend against B2)
 
 Full YAML templates are in `kubernetes/01_infrastructure/k8up/CLAUDE.md`.
 

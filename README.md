@@ -16,7 +16,17 @@ For now, the project will use free SaaS offerings where applicable (e.g. for Met
 - [x] traefik Ingress
 - [x] MetalLB
 - [x] cert-manager
-- [ ] [k8up](https://github.com/k8up-io/k8up)
+- [x] [k8up](https://github.com/k8up-io/k8up)
+- [x] [MariaDB Operator](https://github.com/mariadb-operator/mariadb-operator) (Galera cluster + MaxScale)
+- [x] [Grafana Alloy](https://grafana.com/docs/grafana-cloud/monitor-infrastructure/kubernetes-monitoring/) (Grafana Cloud monitoring)
+- [x] Metrics Server
+- [x] [Vertical Pod Autoscaler](https://github.com/kubernetes/autoscaler/tree/master/vertical-pod-autoscaler)
+- [x] [Reloader](https://github.com/stakater/Reloader)
+- [x] [Reflector](https://github.com/emberstack/kubernetes-reflector)
+- [x] [cloudflared](https://github.com/cloudflare/cloudflared) (Cloudflare Tunnel for public exposure)
+- [x] [External DNS](https://github.com/kubernetes-sigs/external-dns)
+
+---
 
 ## _Below the old README for reference_
 
