@@ -217,7 +217,7 @@ All YAML files in `kubernetes/` follow `<kind>-[patch-]<descriptive-name>.yaml`:
 
 The `sopssecret-*` prefix satisfies both this convention and the `.sops.yaml` encryption rule (see Secrets section above).
 
-**Kustomization lists:** `resources` and `patches` lists in `kustomization.yaml` files must be sorted alphabetically within their logical groups. The wave sections in `kubernetes/kustomization.yaml` are logical groups — sort within each group, not across groups.
+**Kustomization lists:** `resources` and `patches` lists in `kustomization.yaml` files must be sorted alphabetically within their logical groups. Sort by the filename **without** the `.yaml` extension, so a name that is a prefix of another comes first: `certificate-wildcard.yaml` before `certificate-wildcard-lan.yaml` (plain byte-wise sort of the full filename would order them the other way around, since `-` < `.`). The wave sections in `kubernetes/kustomization.yaml` are logical groups — sort within each group, not across groups.
 
 **ConfigMap data:** Keys in `data:` blocks of `ConfigMap` files must be sorted alphabetically.
 
