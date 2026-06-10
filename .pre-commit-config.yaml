@@ -30,6 +30,11 @@ repos:
     rev: v2.1.1
     hooks:
       - id: forbid-secrets
+  - repo: https://github.com/renovatebot/pre-commit-hooks
+    rev: 43.218.0
+    hooks:
+      - id: renovate-config-validator
+        args: [--strict]
   ### Pre-Push Hooks
   - repo: https://github.com/Agilicus/pre-commit-hook-k8svalidate.git
     rev: v0.2.0

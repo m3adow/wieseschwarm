@@ -1,4 +1,24 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
-  "extends": ["config:base"]
+  "extends": ["config:recommended", ":semanticCommitsDisabled"],
+  "argocd": {
+    "managerFilePatterns": ["/^kubernetes/.+\\.yaml$/"]
+  },
+  "kubernetes": {
+    "managerFilePatterns": ["/^kubernetes/.+\\.yaml$/"]
+  },
+  "customManagers": [
+    {
+      "customType": "regex",
+      "description": "ArgoCD upstream install manifest pinned in the bootstrap kustomization",
+      "managerFilePatterns": [
+        "/^kubernetes/00_bootstrap/argocd/kustomization\\.yaml$/"
+      ],
+      "matchStrings": [
+        "https://raw\\.githubusercontent\\.com/argoproj/argo-cd/(?<currentValue>v[\\d.]+)/manifests/install\\.yaml"
+      ],
+      "depNameTemplate": "argoproj/argo-cd",
+      "datasourceTemplate": "github-releases"
+    }
+  ]
 }

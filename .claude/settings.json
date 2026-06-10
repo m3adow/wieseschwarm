@@ -32,7 +32,8 @@
       "Bash(git diff *)",
       "WebFetch(domain:argo-cd.readthedocs.io)",
       "WebFetch(domain:endoflife.date)",
-      "WebFetch(domain:developers.cloudflare.com)"
+      "WebFetch(domain:developers.cloudflare.com)",
+      "Bash(npx --yes --package renovate@latest -- renovate-config-validator --strict renovate.json)"
     ],
     "additionalDirectories": ["/tmp"]
   },
