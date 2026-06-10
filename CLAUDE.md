@@ -32,12 +32,16 @@ Truthy-like values (`true`, `false`, `yes`, `no`, `on`, `off`) must be quoted wh
 
 Two stages — both run in CI (`pre-commit.yaml` workflow):
 
-| Stage        | When      | Includes                                       |
-| ------------ | --------- | ---------------------------------------------- |
-| `pre-commit` | On commit | prettier, yamllint, detect-secrets, SOPS guard |
-| `pre-push`   | On push   | k8svalidate (full K8s manifest validation)     |
+| Stage        | When      | Includes                                                |
+| ------------ | --------- | ------------------------------------------------------- |
+| `pre-commit` | On commit | prettier, yamllint, detect-secrets, SOPS guard          |
+| `pre-push`   | On push   | k8svalidate (full K8s manifest validation), kube-linter |
 
 Run locally: `pre-commit run --all-files`
+
+kube-linter runs as a `local` hook with a customized `entry` pinning the
+`stackrox/kube-linter` docker image (the upstream `kube-linter-docker` hook
+hardcodes a stale image tag). Renovate bumps the pin via a regex manager.
 
 ## SOPS encryption
 

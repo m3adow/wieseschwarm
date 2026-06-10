@@ -4,6 +4,12 @@ kind: Deployment
 metadata:
   name: demo
   namespace: demo
+  annotations:
+    # kube-linter's unsafe-sysctls default list blanket-flags "net.*";
+    # ip_unprivileged_port_start is on the Kubernetes safe-sysctl list.
+    ignore-check.kube-linter.io/unsafe-sysctls: >-
+      net.ipv4.ip_unprivileged_port_start is a safe namespaced sysctl
+      (Kubernetes >= 1.22)
 spec:
   replicas: 1
   strategy:
@@ -20,9 +26,31 @@ spec:
         configmap.reloader.stakater.com/reload: "demo-nginx"
         secret.reloader.stakater.com/reload: "demo-mariadb-user"
     spec:
+      securityContext:
+        runAsNonRoot: true
+        # nginx uid/gid in nginx:alpine; shared by all containers
+        runAsUser: 101
+        runAsGroup: 101
+        # Group-chowns the html PVC and emptyDirs so uid 101 can write
+        fsGroup: 101
+        sysctls:
+          # Lets non-root nginx bind port 80; "safe" sysctl, allowed by the
+          # kubelet without an allowlist. See "Non-root workloads" in
+          # kubernetes/CLAUDE.md.
+          - name: net.ipv4.ip_unprivileged_port_start
+            value: "80"
       initContainers:
         - name: init-html
           image: busybox:1.38.0
+          securityContext:
+            readOnlyRootFilesystem: true
+          resources:
+            requests:
+              cpu: 5m
+              memory: 8Mi
+            limits:
+              cpu: 50m
+              memory: 32Mi
           command:
             - sh
             - -c
@@ -43,6 +71,15 @@ spec:
               mountPath: /html
         - name: init-db
           image: mariadb:12.3.2
+          securityContext:
+            readOnlyRootFilesystem: true
+          resources:
+            requests:
+              cpu: 10m
+              memory: 16Mi
+            limits:
+              cpu: 100m
+              memory: 64Mi
           command:
             - sh
             - -c
@@ -68,6 +105,8 @@ spec:
       containers:
         - name: nginx
           image: nginx:1.31.1-alpine
+          securityContext:
+            readOnlyRootFilesystem: true
           ports:
             - name: http
               containerPort: 80
@@ -79,6 +118,12 @@ spec:
             - name: nginx-config
               mountPath: /etc/nginx/nginx.conf
               subPath: nginx.conf
+            # Writable dirs needed with a read-only root filesystem:
+            # compile-time temp paths and /var/run/nginx.pid (-> /run)
+            - name: nginx-cache
+              mountPath: /var/cache/nginx
+            - name: nginx-run
+              mountPath: /run
           resources:
             requests:
               cpu: 20m
@@ -88,6 +133,8 @@ spec:
               memory: 128Mi
         - name: metrics
           image: nginx/nginx-prometheus-exporter:1.5.1
+          securityContext:
+            readOnlyRootFilesystem: true
           args:
             - --nginx.scrape-uri=http://localhost:8080/stub_status
           ports:
@@ -107,3 +154,7 @@ spec:
         - name: nginx-config
           configMap:
             name: demo-nginx
+        - name: nginx-cache
+          emptyDir: {}
+        - name: nginx-run
+          emptyDir: {}
