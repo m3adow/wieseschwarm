@@ -1,0 +1,23 @@
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: piraeus
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  source:
+    repoURL: git@github.com:m3adow/wieseschwarm.git
+    targetRevision: main
+    path: kubernetes/01_infrastructure/piraeus
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: piraeus-datastore
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true

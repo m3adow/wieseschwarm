@@ -1,0 +1,9 @@
+---
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  - https://github.com/piraeusdatastore/piraeus-operator/releases/download/v2.10.7/manifest.yaml
+  - linstorcluster-piraeus.yaml
+  - linstorsatelliteconfiguration-piraeus.yaml
+  - storageclass-piraeus.yaml

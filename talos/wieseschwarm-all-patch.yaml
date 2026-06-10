@@ -1,0 +1,28 @@
+---
+machine:
+  # Use a disk and disk selector that's never correct to prevent accidental installation on the wrong disk. The actual disk selector is defined in the patches for each node.
+  install:
+    disk: /dev/doesnotexist
+    diskSelector:
+      model: I DO NOT EXIST
+      type: doesnotexist
+  features:
+    rbac: true
+  kubelet:
+    # nodeIP.validSubnets: configured in talos/secret/wieseschwarm-all-patch.yaml
+    # nodeIP:
+    #   validSubnets:
+    #     - <cluster-subnet/CIDR>
+  # network:
+  #   searchDomains:
+  #     - <search-domain>
+cluster:
+  allowSchedulingOnControlPlanes: true
+  network:
+    cni:
+      name: flannel
+      flannel:
+        kubeNetworkPoliciesEnabled: true
+  # etcd:
+  #   advertisedSubnets: # listenSubnets defaults to advertisedSubnets if not set explicitly
+  #     - <cluster-subnet/CIDR>

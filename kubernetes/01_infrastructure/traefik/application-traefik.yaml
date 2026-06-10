@@ -1,0 +1,52 @@
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: traefik
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  source:
+    repoURL: https://traefik.github.io/charts
+    chart: traefik
+    targetRevision: "40.x"
+    helm:
+      releaseName: traefik
+      values: |
+        ingressClass:
+          enabled: true
+          isDefaultClass: true
+        providers:
+          kubernetesCRD:
+            enabled: true
+          kubernetesIngress:
+            enabled: true
+        service:
+          annotations:
+            metallb.universe.tf/loadBalancerIPs: "192.168.10.40"
+          spec:
+            type: LoadBalancer
+        ingressRoute:
+          dashboard:
+            enabled: true
+            matchRule: Host(`traefik.wieseschwarm.lan`)
+            entryPoints:
+              - websecure
+            middlewares:
+              - name: traefik-dashboard-basicauth
+            tls: {}
+        deployment:
+          replicas: 1
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: traefik
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true

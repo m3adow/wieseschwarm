@@ -1,0 +1,115 @@
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: grafana-alloy
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  source:
+    repoURL: https://grafana.github.io/helm-charts
+    chart: k8s-monitoring
+    targetRevision: "4.x"
+    helm:
+      releaseName: grafana-alloy
+      values: |
+        cluster:
+          name: wieseschwarm
+
+        destinations:
+          grafana-cloud-metrics:
+            type: prometheus
+            url: "https://prometheus-prod-65-prod-eu-west-2.grafana.net/api/prom/push"
+            secret:
+              create: false
+              name: grafana-cloud-credentials
+              namespace: monitoring
+            auth:
+              type: basic
+              usernameKey: username-prometheus
+              passwordKey: password
+
+          grafana-cloud-logs:
+            type: loki
+            url: "https://logs-prod-012.grafana.net/loki/api/v1/push"
+            secret:
+              create: false
+              name: grafana-cloud-credentials
+              namespace: monitoring
+            auth:
+              type: basic
+              usernameKey: username-loki
+              passwordKey: password
+
+        # useDefaultAllowList keeps active series ~3k-5k on this cluster.
+        # A raw Kubernetes scrape produces ~40k series; the allowlist trims it.
+        # Never disable this without measuring series count first.
+        clusterMetrics:
+          enabled: true
+          collector: alloy-metrics
+          metricsTuning:
+            useDefaultAllowList: true
+            excludeMetrics:
+              - "go_*"
+              - "rest_client_*" # kube-apiserver client latency histograms with high cardinality
+
+        clusterEvents:
+          enabled: true
+          collector: alloy-singleton
+
+        # Streams pod logs from the Kubernetes API server — no DaemonSet needed.
+        podLogsViaKubernetesAPI:
+          enabled: true
+          collector: alloy-singleton
+
+        applicationObservability:
+          enabled: false
+        profiling:
+          enabled: false
+        costMetrics:
+          enabled: false
+
+        telemetryServices:
+          kube-state-metrics:
+            deploy: true
+          node-exporter:
+            deploy: true
+
+        collectors:
+          alloy-metrics:
+            presets: [clustered, statefulset]
+          alloy-singleton:
+            extraConfig: |
+              remote.kubernetes.secret "mimir_rules_auth" {
+                name      = "grafana-cloud-credentials"
+                namespace = "monitoring"
+              }
+
+              mimir.rules.kubernetes "sync" {
+                address                = "https://prometheus-prod-65-prod-eu-west-2.grafana.net"
+                prometheus_http_prefix = "/api/prom"
+                basic_auth {
+                  username = convert.nonsensitive(remote.kubernetes.secret.mimir_rules_auth.data["username-prometheus"])
+                  password = remote.kubernetes.secret.mimir_rules_auth.data["password"]
+                }
+              }
+
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: monitoring
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    managedNamespaceMetadata:
+      labels:
+        # alloy-singleton requires hostNetwork and hostPort — blocked by baseline
+        pod-security.kubernetes.io/enforce: privileged
+        pod-security.kubernetes.io/audit: privileged
+        pod-security.kubernetes.io/warn: privileged
+    syncOptions:
+      - CreateNamespace=true

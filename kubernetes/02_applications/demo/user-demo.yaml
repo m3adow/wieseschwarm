@@ -1,0 +1,13 @@
+---
+apiVersion: k8s.mariadb.com/v1alpha1
+kind: User
+metadata:
+  name: demo
+  namespace: demo
+spec:
+  mariaDbRef:
+    name: mariadb-cluster
+    namespace: mariadb
+  passwordSecretKeyRef:
+    name: demo-mariadb-user
+    key: password

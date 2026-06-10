@@ -1,3 +1,13 @@
 **/secret/
 **/charts/
 .swp
+
+.vscode/
+
+# Claude files
+**/CLAUDE.local.md
+**/PLAN.md
+**/RESEARCH.md
+**/TODO.md
+docs/superpowers/
+docs/reviews

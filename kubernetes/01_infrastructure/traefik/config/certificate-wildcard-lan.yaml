@@ -1,0 +1,15 @@
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: wildcard-lan-cert
+  namespace: traefik
+spec:
+  secretName: lan-tls
+  issuerRef:
+    name: selfsigned
+    kind: ClusterIssuer
+  dnsNames:
+    - "*.wieseschwarm.lan"
+  duration: 8760h
+  renewBefore: 720h

@@ -1,0 +1,3 @@
+[submodule "kubernetes/02_applications/apps"]
+	path = kubernetes/02_applications/apps
+	url = git@github.com:m3adow/wieseschwarm-applications.git

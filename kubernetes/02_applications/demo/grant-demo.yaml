@@ -1,0 +1,22 @@
+---
+apiVersion: k8s.mariadb.com/v1alpha1
+kind: Grant
+metadata:
+  name: demo
+  namespace: demo
+spec:
+  mariaDbRef:
+    name: mariadb-cluster
+    namespace: mariadb
+  privileges:
+    - SELECT
+    - INSERT
+    - UPDATE
+    - DELETE
+    - CREATE
+    - DROP
+    - INDEX
+    - ALTER
+  database: demo
+  table: "*"
+  username: demo

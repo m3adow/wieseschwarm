@@ -1,0 +1,15 @@
+---
+# Patch to configure Talos for Piraeus Datastore (DRBD).
+# Uses a custom installer image from the Talos Image Factory with the DRBD system extension.
+# Loads the required kernel modules for DRBD replication and LVM_THIN storage pools.
+# See: https://piraeus.io/docs/v2.10.3/how-to/talos/
+machine:
+  install:
+    image: factory.talos.dev/metal-installer/e048aaf4461ff9f9576c9a42f760f2fef566559bd4933f322853ac291e46f238:v1.13.3
+  kernel:
+    modules:
+      - name: drbd
+        parameters:
+          - usermode_helper=disabled
+      - name: drbd_transport_tcp
+      - name: dm-thin-pool

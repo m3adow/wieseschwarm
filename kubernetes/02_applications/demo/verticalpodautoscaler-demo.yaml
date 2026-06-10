@@ -1,0 +1,34 @@
+---
+apiVersion: autoscaling.k8s.io/v1
+kind: VerticalPodAutoscaler
+metadata:
+  name: demo
+  namespace: demo
+spec:
+  targetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: demo
+  updatePolicy:
+    updateMode: "Auto"
+    # The VPA updater refuses to evict workloads below 2 replicas by default
+    # (--min-replicas=2). Without this, Auto mode never applies recommendations
+    # to the single-replica demo Deployment. Each VPA-driven eviction briefly
+    # takes the demo down — acceptable here, see demo CLAUDE.md.
+    minReplicas: 1
+  resourcePolicy:
+    containerPolicies:
+      - containerName: nginx
+        minAllowed:
+          cpu: 10m
+          memory: 16Mi
+        maxAllowed:
+          cpu: 200m
+          memory: 128Mi
+      - containerName: metrics
+        minAllowed:
+          cpu: 5m
+          memory: 16Mi
+        maxAllowed:
+          cpu: 100m
+          memory: 64Mi

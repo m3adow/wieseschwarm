@@ -1,0 +1,20 @@
+---
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - certificate-demo-public.yaml
+  - configmap-demo-nginx.yaml
+  - database-demo.yaml
+  - deployment-demo.yaml
+  - grant-demo.yaml
+  - ingressroute-demo-lan.yaml
+  - ingressroute-demo-public.yaml
+  - namespace.yaml
+  - persistentvolumeclaim-demo.yaml
+  - prometheusrule-demo.yaml
+  - schedule-demo-k8up.yaml
+  - service-demo.yaml
+  - sopssecret-demo-k8up-b2.yaml
+  - sopssecret-demo-mariadb-user.yaml
+  - user-demo.yaml
+  - verticalpodautoscaler-demo.yaml

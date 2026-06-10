@@ -1,0 +1,24 @@
+---
+apiVersion: k8s.mariadb.com/v1alpha1
+kind: MariaDB
+metadata:
+  name: mariadb-cluster
+  namespace: mariadb
+spec:
+  rootPasswordSecretKeyRef:
+    name: mariadb-credentials
+    key: rootPassword
+
+  storage:
+    storageClassName: piraeus-replicated
+    size: 5Gi
+
+  replicas: 3
+
+  galera:
+    enabled: true
+    recovery:
+      enabled: true
+
+  maxScaleRef:
+    name: mariadb-cluster-maxscale

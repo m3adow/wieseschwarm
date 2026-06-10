@@ -1,0 +1,14 @@
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: argocd-cmd-params-cm
+data:
+  # The wieseschwarm repo contains a git submodule at kubernetes/02_applications/apps
+  # pointing to wieseschwarm-applications. ArgoCD cannot clone it using the main repo's
+  # deploy key because GitHub deploy keys are single-repo and cannot be shared.
+  # kustomize only reads 02_applications/application.yaml (a static ArgoCD Application
+  # manifest), never the submodule contents, so submodule init provides no value.
+  reposerver.enable.git.submodule: "false"
+  # The Traefik Ingress Controller terminates TLS, so ArgoCD's server has to run in insecure mode.
+  server.insecure: "true"

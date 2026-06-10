@@ -1,0 +1,45 @@
+---
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: argocd
+
+resources:
+  # Bootstrap (no wave)
+  - 00_bootstrap/argocd/application-argocd.yaml
+
+  # Wave 0 — CRD-only installs; wave-1 operators depend on these CRDs being present
+  - 01_infrastructure/mariadb-operator/application-mariadb-operator-crds.yaml
+  - 01_infrastructure/prometheus-operator-crds/application-prometheus-operator-crds.yaml
+
+  # Wave 1 — CRD-providing operators; wave-2 config depends on their CRDs
+  - 01_infrastructure/cert-manager/application-cert-manager.yaml
+  - 01_infrastructure/mariadb-operator/application-mariadb-operator.yaml
+  - 01_infrastructure/metallb/application-metallb.yaml
+  - 01_infrastructure/vpa/application-vpa.yaml
+
+  # Wave 2 — operators and config that only need core K8s resources
+  - 01_infrastructure/cert-manager/config/application-cert-manager-config.yaml
+  - 01_infrastructure/grafana-alloy/application-grafana-alloy.yaml
+  - 01_infrastructure/grafana-alloy/application-grafana-alloy-rules.yaml
+  - 01_infrastructure/grafana-alloy/config/application-grafana-alloy-config.yaml
+  - 01_infrastructure/k8up/application-k8up.yaml
+  - 01_infrastructure/mariadb-operator/config/application-mariadb-operator-config.yaml
+  - 01_infrastructure/metallb/config/application-metallb-config.yaml
+  - 01_infrastructure/metrics-server/application-metrics-server.yaml
+  - 01_infrastructure/reflector/application-reflector.yaml
+  - 01_infrastructure/reloader/application-reloader.yaml
+  - 01_infrastructure/traefik/application-traefik.yaml
+
+  # Wave 3 — finalization + config needing wave-2 resources
+  - 01_infrastructure/cloudflared/application-cloudflared.yaml
+  - 01_infrastructure/external-dns/application-external-dns.yaml
+  - 01_infrastructure/traefik/config/application-traefik-config.yaml
+
+  # No wave — independent operators
+  - 01_infrastructure/piraeus/application-piraeus.yaml
+  - 01_infrastructure/sops-secrets-operator/application-sops-secrets-operator.yaml
+
+  # Applications
+  - 02_applications/application-demo.yaml
+  - 02_applications/application-wieseschwarm-apps.yaml
