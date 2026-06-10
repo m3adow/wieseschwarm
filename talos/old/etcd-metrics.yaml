@@ -1,6 +1,0 @@
----
-# https://github.com/siderolabs/talos/discussions/7214
-cluster:
-  etcd:
-    extraArgs:
-      listen-metrics-urls: http://0.0.0.0:2381
