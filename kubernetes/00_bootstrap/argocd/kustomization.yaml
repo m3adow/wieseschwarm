@@ -6,7 +6,7 @@ namespace: argocd
 
 resources:
   - namespace-argocd.yaml
-  - https://raw.githubusercontent.com/argoproj/argo-cd/v2.13.3/manifests/install.yaml
+  - https://raw.githubusercontent.com/argoproj/argo-cd/v2.14.21/manifests/install.yaml
   - ingressroute-argocd.yaml
   - sopssecret-apps-repo.yaml
 
