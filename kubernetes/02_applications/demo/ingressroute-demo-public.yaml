@@ -4,6 +4,8 @@ kind: IngressRoute
 metadata:
   name: demo-public
   namespace: demo
+  annotations:
+    external-dns.alpha.kubernetes.io/target: "0c7f5b3b-6179-4d8a-beff-954e8e87e37c.cfargotunnel.com"
 spec:
   entryPoints:
     - websecure

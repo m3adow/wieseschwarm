@@ -1,0 +1,26 @@
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cloudflared
+  namespace: cloudflared
+data:
+  config.yaml: |
+    # Tunnel routing lives HERE, in git. The tunnel runs with a token
+    # (TUNNEL_TOKEN) but has NO remote routes ("Published application
+    # routes" in the Zero Trust dashboard is empty), so cloudflared uses
+    # this local config file (verified via pod logs: no remote-config
+    # fetch). Do NOT add routes in the dashboard -- a non-empty remote
+    # configuration takes precedence and this file would be silently
+    # ignored (cloudflare/cloudflared#633).
+    #
+    # The wildcard routes every first-level *.wieseclan.eu.org hostname to
+    # Traefik; per-app exposure is controlled by an IngressRoute plus an
+    # external-dns annotation -- see "Public exposure" in kubernetes/CLAUDE.md.
+    metrics: 0.0.0.0:2000
+    ingress:
+      - hostname: "*.wieseclan.eu.org"
+        service: https://traefik.traefik.svc.cluster.local:443
+        originRequest:
+          noTLSVerify: true
+      - service: http_status:404

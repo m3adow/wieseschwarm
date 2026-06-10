@@ -23,7 +23,8 @@
       "mcp__kubernetes__nodes_stats_summary",
       "mcp__kubernetes__resources_get",
       "mcp__argocd__get_application_managed_resources",
-      "mcp__kubernetes__pods_log"
+      "mcp__kubernetes__pods_log",
+      "Bash(yamllint *)"
     ],
     "additionalDirectories": ["/tmp"]
   },

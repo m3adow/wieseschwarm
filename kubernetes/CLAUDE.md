@@ -71,6 +71,8 @@ All Helm values are currently inlined in Application specs (`spec.sources[].helm
 | ---------------------- | ----------------------- |
 | ArgoCD                 | `argocd`                |
 | cert-manager           | `cert-manager`          |
+| cloudflared            | `cloudflared`           |
+| external-dns           | `external-dns`          |
 | Grafana Alloy          | `monitoring`            |
 | MetalLB                | `metallb-system`        |
 | Metrics Server         | `metrics-server`        |
@@ -137,6 +139,53 @@ reflector.v1.k8s.emberstack.com/reflection-auto-namespaces: "ns-a,ns-b"
 When used inside a `SopsSecret` template, these annotations are stored as plaintext in git (only `stringData`/`data` values are encrypted) and are visible to Reflector after the SOPS operator creates the underlying Secret.
 
 A common use: annotate the wildcard TLS Secret produced by cert-manager so application namespaces can mount the same certificate without duplicating the `Certificate` resource.
+
+## Public exposure (Cloudflare Tunnel + external-dns)
+
+Public internet exposure runs through a Cloudflare Tunnel (`cloudflared`, 2 replicas) to Traefik. Tunnel routing is **git-managed** in the cloudflared ConfigMap: a single wildcard ingress rule (`*.wieseclan.eu.org` → `https://traefik.traefik.svc.cluster.local:443`, `noTLSVerify: true`) routes everything to Traefik, so per-app exposure never touches the tunnel config.
+
+**Caution:** the tunnel runs with a token, but its remote configuration is empty ("Published application routes" in the Zero Trust dashboard shows none), which is why the local config file applies. Never add routes in the dashboard — a non-empty remote configuration takes precedence and the git-managed ConfigMap would be silently ignored (cloudflare/cloudflared#633).
+
+**Single source of truth for the tunnel:**
+
+| Item            | Value                                                   |
+| --------------- | ------------------------------------------------------- |
+| Tunnel ID       | `0c7f5b3b-6179-4d8a-beff-954e8e87e37c`                  |
+| CNAME target    | `0c7f5b3b-6179-4d8a-beff-954e8e87e37c.cfargotunnel.com` |
+| Public DNS zone | `wieseclan.eu.org` (Cloudflare, Free plan)              |
+
+**To expose an application publicly**, add an IngressRoute with the external-dns target annotation — nothing else:
+
+```yaml
+---
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: <app>-public
+  namespace: <namespace>
+  annotations:
+    external-dns.alpha.kubernetes.io/target: "0c7f5b3b-6179-4d8a-beff-954e8e87e37c.cfargotunnel.com"
+spec:
+  entryPoints:
+    - websecure
+  routes:
+    - match: Host(`<app>.wieseclan.eu.org`)
+      kind: Rule
+      services:
+        - name: <service>
+          port: <port>
+  tls:
+    secretName: <app>-public-tls # cert-manager Certificate, letsencrypt-production issuer
+```
+
+external-dns (wave 3, `sources: [traefik-proxy]`) sees the IngressRoute and creates a proxied CNAME for the host pointing at the tunnel. Removing the IngressRoute removes the DNS record (`policy: sync`).
+
+**Constraints:**
+
+- Only first-level subdomains (`<app>.wieseclan.eu.org`): Cloudflare Universal SSL (Free plan) does not cover deeper levels (`a.b.wieseclan.eu.org`).
+- Any DNS record pointing at the tunnel reaches Traefik; the IngressRoute set is the real exposure gate (no matching route → 404).
+- If the tunnel is ever recreated: update the tunnel token SopsSecret, the table above, and every `external-dns.alpha.kubernetes.io/target` annotation (grep for `cfargotunnel.com`). Leave the new tunnel's dashboard routes empty so the git-managed ConfigMap stays authoritative.
+- Reloader restarts the cloudflared pods when the ConfigMap changes; routing edits in git go live on the next ArgoCD sync without manual action.
 
 ## Database provisioning (native MariaDB CRDs)
 
