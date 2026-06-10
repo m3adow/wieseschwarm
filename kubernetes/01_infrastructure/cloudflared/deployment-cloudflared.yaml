@@ -17,9 +17,26 @@ spec:
         configmap.reloader.stakater.com/reload: "cloudflared"
         secret.reloader.stakater.com/reload: "cloudflared-token"
     spec:
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 100
+              podAffinityTerm:
+                topologyKey: kubernetes.io/hostname
+                labelSelector:
+                  matchLabels:
+                    app: cloudflared
       containers:
         - name: cloudflared
           image: cloudflare/cloudflared:2026.6.0
+          # Image runs as 65532:65532; a read-only root filesystem is fine
+          # since config and token are mounted/injected.
+          securityContext:
+            runAsNonRoot: true
+            readOnlyRootFilesystem: true
+          ports:
+            - name: metrics
+              containerPort: 2000
           args:
             - tunnel
             - --config

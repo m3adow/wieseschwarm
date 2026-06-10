@@ -193,6 +193,44 @@ external-dns (wave 3, `sources: [traefik-proxy]`) sees the IngressRoute and crea
 See `kubernetes/01_infrastructure/mariadb-operator/CLAUDE.md` for the full `Database`, `User`,
 and `Grant` CR patterns used to provision per-application MariaDB databases.
 
+## Non-root workloads
+
+Never run a container as root just to bind a privileged port (< 1024). Use the
+`net.ipv4.ip_unprivileged_port_start` sysctl in the pod `securityContext` instead:
+
+```yaml
+securityContext:
+  runAsNonRoot: true
+  runAsUser: 101 # uid the image expects (101 = nginx in nginx:alpine)
+  runAsGroup: 101
+  fsGroup: 101 # group-chowns PVCs and emptyDirs so the uid can write
+  sysctls:
+    - name: net.ipv4.ip_unprivileged_port_start
+      value: "80"
+```
+
+The sysctl is namespaced and "safe" (Kubernetes >= 1.22): the kubelet allows it
+without an allowlist, and no privileged container or capability is needed.
+
+Combine with `readOnlyRootFilesystem: true` in each container's
+`securityContext`, mounting `emptyDir` volumes over paths the image writes at
+runtime (for stock nginx: `/var/cache/nginx` for the compile-time temp paths
+and `/run` for the pid file). `02_applications/demo/deployment-demo.yaml` is
+the reference example.
+
+The kube-linter pre-push hook enforces this via the `run-as-non-root` and
+`no-read-only-root-fs` checks. kube-linter's `unsafe-sysctls` check
+blanket-flags all `net.*` sysctls, including this one — Kubernetes-safe
+sysctls need a per-object ignore annotation:
+
+```yaml
+metadata:
+  annotations:
+    ignore-check.kube-linter.io/unsafe-sysctls: >-
+      net.ipv4.ip_unprivileged_port_start is a safe namespaced sysctl
+      (Kubernetes >= 1.22)
+```
+
 ## Secrets (SopsSecret)
 
 Files containing `SopsSecret` CRDs **must** be named `sopssecret-<descriptive-name>.yaml` (e.g. `sopssecret-cloudflare-token.yaml`).

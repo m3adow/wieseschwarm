@@ -10,6 +10,16 @@
   "customManagers": [
     {
       "customType": "regex",
+      "description": "kube-linter image pinned in the local pre-commit hook entry",
+      "managerFilePatterns": ["/^\\.pre-commit-config\\.yaml$/"],
+      "matchStrings": [
+        "entry: stackrox/kube-linter:(?<currentValue>v[\\d.]+) lint"
+      ],
+      "depNameTemplate": "stackrox/kube-linter",
+      "datasourceTemplate": "docker"
+    },
+    {
+      "customType": "regex",
       "description": "ArgoCD upstream install manifest pinned in the bootstrap kustomization",
       "managerFilePatterns": [
         "/^kubernetes/00_bootstrap/argocd/kustomization\\.yaml$/"
