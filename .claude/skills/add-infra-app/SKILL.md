@@ -101,7 +101,7 @@ spec:
   project: default
   source:
     repoURL: git@github.com:m3adow/wieseschwarm.git
-    targetRevision: feature/2026-rework
+    targetRevision: main
     path: kubernetes/01_infrastructure/<name>/config
   destination:
     server: https://kubernetes.default.svc
@@ -114,7 +114,7 @@ spec:
       - CreateNamespace=true
 ```
 
-**Important:** `targetRevision: feature/2026-rework` must be changed to `main` before merging. This is tracked in the pre-merge checklist in `kubernetes/CLAUDE.md`.
+**Important:** when working on a feature branch, set `targetRevision` to that branch for testing and change it back to `main` before merging — see the pre-merge checklist in `kubernetes/CLAUDE.md`.
 
 **ServerSideApply:** do NOT add `- ServerSideApply=true` to `syncOptions` by default — see "ArgoCD syncOptions" in `kubernetes/CLAUDE.md`. Opt in only when the chart installs CRDs too large for client-side apply (annotation size limit), and pair it with the `argocd.argoproj.io/compare-options: ServerSideDiff=true` annotation (see `k8up/CLAUDE.md` for a documented example).
 
