@@ -4,19 +4,12 @@ TALOSCONFIG_STATE_DIR = /tmp/talosconfig-dev
 TALOSCONFIG_DEV = /tmp/talosconfig.dev
 TALOSCTL_DEV = talosctl --talosconfig $(TALOSCONFIG_DEV)
 
-.PHONY: apply
-apply:
-	# First apply may fail if CRDs are not being applied in time
-	- kubectl kustomize --enable-helm kubernetes/00_init/overlays/init-secrets | kubectl apply -f-
-	kubectl kustomize --enable-helm kubernetes/00_init/overlays/init-secrets | kubectl apply -f-
-
-.PHONY: plan
-plan:
-	kubectl kustomize --enable-helm kubernetes/00_init/overlays/init-secrets
-
 .PHONY: argocd-bootstrap
 argocd-bootstrap:
-	kubectl kustomize kubernetes/00_bootstrap/argocd | kubectl apply -f-
+	# On a fresh cluster the IngressRoute and SopsSecret resources fail (CRDs
+	# not installed yet); the self-managed argocd Application reconciles them
+	# once Traefik and sops-secrets-operator are up.
+	- kubectl kustomize kubernetes/00_bootstrap/argocd | kubectl apply -f-
 	kubectl -n argocd wait deployment argocd-server --for=condition=Available --timeout=300s
 	$(MAKE) argocd-repo-configure
 	@echo "ArgoCD ready. Initial admin password:"
@@ -79,7 +72,7 @@ dev-cluster-create:
 dev-cluster-destroy:
 	- talosctl cluster destroy \
 		--state $(TALOSCONFIG_STATE_DIR)
-	docker rm -f talos-default-worker-1 talos-default-controlplane-1
+	- docker rm -f talos-default-worker-1 talos-default-controlplane-1
 	rm -f $(KUBECONFIG_DEV) $(TALOSCONFIG_DEV)
 	rm -rf $(TALOSCONFIG_STATE_DIR)
 
