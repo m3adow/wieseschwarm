@@ -24,6 +24,19 @@ kubernetes/
 
 **Do not edit `apps-of-apps.yaml`** unless changing the repo URL or global sync policy. New components go into `kustomization.yaml` as resources pointing to their Application manifests.
 
+## ArgoCD bootstrap procedure
+
+Run once on a fresh cluster, in order:
+
+```bash
+make argocd-bootstrap       # Deploy ArgoCD, wait for pods
+make argocd-repo-configure  # Create SSH deploy key secret
+make argocd-apps-bootstrap  # Apply root App of Apps
+make argocd-password        # Print initial admin password
+```
+
+`argocd-bootstrap` applies `kubernetes/00_bootstrap/argocd/` with `kubectl kustomize`, then waits for `argocd-server` to become Available before calling `argocd-repo-configure`. The SSH deploy key must exist at `kubernetes/secret/argocd-deploy-key` (gitignored) before running.
+
 ## Sync-wave ordering
 
 Wave annotations control ArgoCD rollout order within a sync operation:
@@ -61,6 +74,15 @@ Run `/add-infra-app` for a guided walkthrough.
 ## ArgoCD syncOptions
 
 Avoid adding `- ServerSideApply=true` to an Application's `syncOptions` unless there is a concrete reason (e.g., the controller or Helm chart requires it to handle large CRDs that exceed the annotation size limit, or the upstream chart explicitly documents it). SSA changes ownership semantics — fields managed by other controllers can be taken over by ArgoCD, causing unexpected conflicts or drift on the next sync. Client-side apply (the default) is sufficient for the vast majority of applications.
+
+**Current exceptions:**
+
+| Application              | SSA | SSD | Reason                                                                                                                                                                                                     |
+| ------------------------ | --- | --- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `00_bootstrap/argocd`    | ✓   | ✓   | ArgoCD v3 ships CRDs that exceed the 256 KB annotation limit. `ServerSideDiff=true` delegates comparison to the cluster's own schema, preventing false-positive diffs from new fields in Kubernetes 1.33+. |
+| `01_infrastructure/k8up` | ✓   | ✓   | k8up CRDs also exceed the annotation limit. See `kubernetes/01_infrastructure/k8up/CLAUDE.md` for details.                                                                                                 |
+
+When adding a new exception, document the reason here and in the component's own `CLAUDE.md`.
 
 ## Helm values
 

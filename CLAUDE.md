@@ -53,14 +53,7 @@ For SopsSecret CRD naming and encryption scope, see `kubernetes/CLAUDE.md`.
 
 ## ArgoCD bootstrap procedure
 
-```bash
-make argocd-bootstrap       # Deploy ArgoCD, wait for pods
-make argocd-repo-configure  # Create SSH deploy key secret
-make argocd-apps-bootstrap  # Apply root App of Apps
-make argocd-password        # Print initial admin password
-```
-
-**Before merging to main**: change `targetRevision` in all Application resources from the feature branch to `main`. Run `grep -r "targetRevision" kubernetes/` to find all occurrences.
+See `kubernetes/CLAUDE.md` for the full bootstrap procedure and pre-merge checklist.
 
 ## Branch and PR conventions
 
