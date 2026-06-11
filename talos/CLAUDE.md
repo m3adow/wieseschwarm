@@ -76,6 +76,22 @@ Set env vars printed after creation: `export TALOSCONFIG=/tmp/talosconfig.dev KU
 - **Piraeus Datastore** (DRBD + LVM_THIN) for replicated storage. `piraeus-patch.yaml` sets the Talos Image Factory installer with the `siderolabs/drbd` extension and loads `drbd`, `drbd_transport_tcp`, and `dm-thin-pool` kernel modules.
 - **Traefik + Gateway API** for ingress, not `ingress-nginx`.
 
+## Kubernetes feature gates
+
+Feature gates are configured in `talos/wieseschwarm-all-patch.yaml` under
+`machine.kubelet.extraArgs.feature-gates` (kubelet feature gates) and under
+`cluster.apiServer.extraArgs.feature-gates` / `cluster.scheduler.extraArgs.feature-gates`
+(control-plane feature gates). All values must be comma-separated on a single line.
+
+| Gate                        | Component                     | Status (K8s 1.33) | Purpose                                                                                              |
+| --------------------------- | ----------------------------- | ----------------- | ---------------------------------------------------------------------------------------------------- |
+| `InPlacePodVerticalScaling` | kubelet, apiServer, scheduler | Beta              | Required for VPA `InPlaceOrRecreate` mode to resize containers without eviction                      |
+| `RecursiveReadOnlyMounts`   | kubelet                       | Beta              | Enables `recursiveReadOnly: Enabled/IfPossible` on volume mounts; see `kubernetes/CLAUDE.md`         |
+| `UserNamespacesSupport`     | kubelet                       | Beta              | Allows pods to run in a Linux user namespace via `spec.hostUsers: false`; see `kubernetes/CLAUDE.md` |
+
+When a gate graduates to GA it becomes always-on and can be removed from this list. Verify
+current status before upgrading Kubernetes.
+
 ## Key constraints
 
 - `wieseschwarm-all-patch.yaml` intentionally sets an impossible install disk (`/dev/doesnotexist`) so Talos refuses to install without an explicit device-specific patch — this prevents accidental disk selection on the wrong node.
