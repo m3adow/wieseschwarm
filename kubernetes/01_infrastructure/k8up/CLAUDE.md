@@ -8,7 +8,7 @@ Backup operator using restic. Helm chart Application at wave 2. Namespace: `k8up
 
 **`ServerSideApply=true` (syncOption):** k8up installs large CRDs that exceed the 256 KB annotation size limit used by ArgoCD's default client-side apply. Without SSA, ArgoCD fails to apply the CRDs with an annotation overflow error.
 
-**`argocd.argoproj.io/compare-options: ServerSideDiff=true` (annotation):** ArgoCD 2.13 uses its local Kubernetes schema for comparison diffs. Kubernetes 1.33 added `ReplicaSet.status.terminatingReplicas`, which ArgoCD 2.13's bundled schema does not declare. With SSA enabled, this causes every diff check to fail with "field not declared in schema". Setting `ServerSideDiff=true` delegates comparison to the cluster via a dry-run SSA request, so the cluster's own schema is used instead of ArgoCD's local copy.
+**`argocd.argoproj.io/compare-options: ServerSideDiff=true` (annotation):** ArgoCD uses a bundled local Kubernetes schema for comparison diffs. Kubernetes 1.33 added `ReplicaSet.status.terminatingReplicas`, which ArgoCD's bundled schema does not yet declare. With SSA enabled, this causes every diff check to fail with "field not declared in schema". Setting `ServerSideDiff=true` delegates comparison to the cluster via a dry-run SSA request, so the cluster's own schema is used instead of ArgoCD's local copy. This applies to all ArgoCD versions shipping a schema older than K8s 1.33.
 
 ## Adding backups to an application namespace
 
