@@ -22,10 +22,10 @@ metrics, ingress, certificates, and autoscaling all work.
   release it before the replacement can attach. Any single-replica workload with an
   RWO Piraeus PVC needs this.
 - **VPA `minReplicas: 1`**: the VPA updater refuses to evict workloads below
-  2 replicas by default, so without this override `updateMode: Auto` would never
-  apply recommendations here. Consequence: each VPA-driven eviction briefly takes
-  the demo down. Acceptable for the demo; for real single-replica apps prefer
-  `updateMode: "Initial"` or accept the same tradeoff consciously.
+  2 replicas by default, so without this override the Recreate fallback in
+  `updateMode: InPlaceOrRecreate` would never trigger for the single-replica demo
+  Deployment. In-place resize is always attempted first; eviction is the fallback
+  and briefly takes the demo down — acceptable here.
 - **Monthly K8up schedule with `keepLast: 1`**: demo pacing only, to show the
   mechanism without burning B2 storage. Real apps should use the nightly
   schedule/retention template from `kubernetes/01_infrastructure/k8up/CLAUDE.md`.

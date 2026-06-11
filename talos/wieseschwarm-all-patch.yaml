@@ -9,6 +9,8 @@ machine:
   features:
     rbac: true
   kubelet:
+    extraArgs:
+      feature-gates: InPlacePodVerticalScaling=true
     # nodeIP.validSubnets: configured in talos/secret/wieseschwarm-all-patch.yaml
     # nodeIP:
     #   validSubnets:
@@ -23,6 +25,12 @@ cluster:
       name: flannel
       flannel:
         kubeNetworkPoliciesEnabled: true
+  apiServer:
+    extraArgs:
+      feature-gates: InPlacePodVerticalScaling=true
+  scheduler:
+    extraArgs:
+      feature-gates: InPlacePodVerticalScaling=true
   # etcd:
   #   advertisedSubnets: # listenSubnets defaults to advertisedSubnets if not set explicitly
   #     - <cluster-subnet/CIDR>
