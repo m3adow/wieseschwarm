@@ -39,26 +39,25 @@ make argocd-password        # Print initial admin password
 
 ## Sync-wave ordering
 
-Wave annotations control ArgoCD rollout order within a sync operation:
+Wave annotations control ArgoCD rollout order within a sync operation. **Infrastructure Applications use negative waves so that user Applications with no sync-wave annotation deploy last** — ArgoCD defaults to wave 0, which is after all infrastructure.
 
-| Wave | Current occupants                                                                                                                                                                                | Purpose                                                |
-| ---- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------ |
-| 0    | `mariadb-operator-crds`, `prometheus-operator-crds`                                                                                                                                              | CRD-only installs; wave-1 operators depend on them     |
-| 1    | `cert-manager`, `metallb`, `mariadb-operator`, `vpa`                                                                                                                                             | CRD-providing operators; wave-2 config depends on them |
-| 2    | `cert-manager-config`, `metallb-config`, `traefik`, `reloader`, `reflector`, `k8up`, `mariadb-operator-config`, `metrics-server`, `grafana-alloy`, `grafana-alloy-rules`, `grafana-alloy-config` | Operators/config that only need core K8s resources     |
-| 3    | `traefik-config`, `cloudflared`, `external-dns`                                                                                                                                                  | Finalize + config needing wave-2 resources             |
-| 4    | `demo`, `wieseschwarm-apps`                                                                                                                                                                      | User-facing applications; need all infrastructure      |
-| —    | `argocd`, `piraeus`, `sops-secrets-operator`                                                                                                                                                     | No wave; bootstrap or independent                      |
+| Wave | Current occupants                                                                                                                                                                                | Purpose                                                  |
+| ---- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------- |
+| -4   | `argocd`, `mariadb-operator-crds`, `prometheus-operator-crds`                                                                                                                                    | ArgoCD self-upgrade + CRD-only installs; processed first |
+| -3   | `cert-manager`, `metallb`, `mariadb-operator`, `piraeus`, `sops-secrets-operator`, `vpa`                                                                                                         | CRD-providing operators; wave -2 config depends on them  |
+| -2   | `cert-manager-config`, `metallb-config`, `traefik`, `reloader`, `reflector`, `k8up`, `mariadb-operator-config`, `metrics-server`, `grafana-alloy`, `grafana-alloy-rules`, `grafana-alloy-config` | Operators/config that only need core K8s resources       |
+| -1   | `traefik-config`, `cloudflared`, `external-dns`                                                                                                                                                  | Finalize + config needing wave -2 resources              |
+| 0    | all user-facing applications (default; no annotation needed)                                                                                                                                     | Applications deploy after all infrastructure             |
 
-**Rule of thumb:** Helm chart installs at wave N, their Kustomize config at wave N+1. If a resource depends on a CRD installed by wave 1, put it at wave 2 or later.
+**Rule of thumb:** Helm chart installs at wave N, their Kustomize config at wave N+1. New applications need no sync-wave annotation — the ArgoCD default of wave 0 guarantees they land after all infrastructure waves.
 
-**Wave-1 is reserved for operators whose CRDs are consumed by wave-2 resources.** cert-manager installs the `Certificate` CRD used by `traefik-config`; metallb installs `IPAddressPool`/`L2Advertisement` used by `metallb-config`. Simple operators that install no CRDs (or whose CRDs nothing else depends on) belong at wave 2, not wave 1. Exception: operators may be pre-registered at wave 1 when their CRDs are _anticipated_ to be consumed by future wave-2 config apps — document the rationale in the Application's sync-wave annotation comment.
+**Wave -3 is reserved for operators whose CRDs are consumed by wave -2/-1 resources.** cert-manager installs the `Certificate` CRD used by `traefik-config`; metallb installs `IPAddressPool`/`L2Advertisement` used by `metallb-config`. Simple operators that install no CRDs (or whose CRDs nothing else depends on) belong at wave -2, not wave -3. Exception: operators may be pre-registered at wave -3 when their CRDs are _anticipated_ to be consumed by future wave -2/-1 config apps — document the rationale in the Application's sync-wave annotation comment.
 
 Set waves via annotation on the Application:
 
 ```yaml
 annotations:
-  argocd.argoproj.io/sync-wave: "2"
+  argocd.argoproj.io/sync-wave: "-2"
 ```
 
 ## Adding a new infrastructure component
