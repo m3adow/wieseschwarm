@@ -5,9 +5,9 @@ metadata:
   name: vpa
   namespace: argocd
   annotations:
-    # Wave 1: VPA installs VerticalPodAutoscaler CRDs. Wave-2 config apps may create
-    # VerticalPodAutoscaler objects, so the CRDs must be present before wave 2 runs.
-    argocd.argoproj.io/sync-wave: "1"
+    # Wave -3: VPA installs VerticalPodAutoscaler CRDs. Wave -2 config apps may create
+    # VerticalPodAutoscaler objects, so the CRDs must be present before wave -2 runs.
+    argocd.argoproj.io/sync-wave: "-3"
   finalizers:
     - resources-finalizer.argocd.argoproj.io
 spec:
