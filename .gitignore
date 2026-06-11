@@ -5,7 +5,7 @@
 .vscode/
 
 # Claude files
-**/CLAUDE.local.md
+**/*.local.md
 **/PLAN.md
 **/RESEARCH.md
 **/TODO.md

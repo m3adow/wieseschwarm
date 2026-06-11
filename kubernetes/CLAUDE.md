@@ -253,6 +253,43 @@ metadata:
       (Kubernetes >= 1.22)
 ```
 
+## Security feature gates
+
+Two security-related kubelet feature gates are enabled cluster-wide (see `talos/CLAUDE.md` for the full gate table).
+Both are opt-in per workload — enabling the gate does not change existing pod behavior.
+
+### UserNamespacesSupport
+
+Runs pod processes inside a Linux user namespace so that UID 0 inside the container maps to an
+unprivileged host UID. Requires kernel ≥ 6.3 (Talos default kernel qualifies). Opt in per pod:
+
+```yaml
+spec:
+  hostUsers: false # top-level pod spec field, not in securityContext
+```
+
+Combine with `runAsNonRoot: true` in `securityContext` for defense in depth: user namespaces
+protect against container-escape exploits; `runAsNonRoot` prevents privilege escalation inside
+the container.
+
+### RecursiveReadOnlyMounts
+
+Makes `readOnly: true` volume mounts kernel-recursively read-only (sets `MS_REC` on the bind
+mount), blocking bind-mount-based escape paths inside the container. Requires kernel ≥ 5.12.
+Opt in per volume mount:
+
+```yaml
+volumeMounts:
+  - name: config
+    mountPath: /etc/app
+    readOnly: true
+    recursiveReadOnly: Enabled # or IfPossible to tolerate older kernels
+```
+
+`Enabled` fails the pod if the kernel does not support it. `IfPossible` silently falls back.
+Use `Enabled` for new workloads; `IfPossible` only when the manifest must run on clusters
+without this gate.
+
 ## Secrets (SopsSecret)
 
 Files containing `SopsSecret` CRDs **must** be named `sopssecret-<descriptive-name>.yaml` (e.g. `sopssecret-cloudflare-token.yaml`).

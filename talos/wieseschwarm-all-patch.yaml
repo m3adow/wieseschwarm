@@ -10,7 +10,7 @@ machine:
     rbac: true
   kubelet:
     extraArgs:
-      feature-gates: InPlacePodVerticalScaling=true
+      feature-gates: InPlacePodVerticalScaling=true,RecursiveReadOnlyMounts=true,UserNamespacesSupport=true
     # nodeIP.validSubnets: configured in talos/secret/wieseschwarm-all-patch.yaml
     # nodeIP:
     #   validSubnets:
