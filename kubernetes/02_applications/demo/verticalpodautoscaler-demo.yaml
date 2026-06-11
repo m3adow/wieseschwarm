@@ -10,11 +10,11 @@ spec:
     kind: Deployment
     name: demo
   updatePolicy:
-    updateMode: "Auto"
+    updateMode: "InPlaceOrRecreate"
     # The VPA updater refuses to evict workloads below 2 replicas by default
-    # (--min-replicas=2). Without this, Auto mode never applies recommendations
-    # to the single-replica demo Deployment. Each VPA-driven eviction briefly
-    # takes the demo down — acceptable here, see demo CLAUDE.md.
+    # (--min-replicas=2). Without this, the Recreate fallback never applies to
+    # the single-replica demo Deployment. In-place resize is always attempted
+    # first; eviction only occurs when in-place is not possible.
     minReplicas: 1
   resourcePolicy:
     containerPolicies:

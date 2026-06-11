@@ -43,12 +43,13 @@ spec:
 
 ## Update modes
 
-| Mode       | Effect                                                             |
-| ---------- | ------------------------------------------------------------------ |
-| `Off`      | Recommendations computed and stored; nothing applied               |
-| `Initial`  | Requests set at pod creation only; no evictions                    |
-| `Recreate` | Requests set at creation + pods evicted when recommendations drift |
-| `Auto`     | Same as `Recreate` today; may use in-place updates in future       |
+| Mode                | Effect                                                                                                                                                                                              |
+| ------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `Off`               | Recommendations computed and stored; nothing applied                                                                                                                                                |
+| `Initial`           | Requests set at pod creation only; no evictions                                                                                                                                                     |
+| `Recreate`          | Requests set at creation + pods evicted when recommendations drift                                                                                                                                  |
+| `InPlaceOrRecreate` | **Default for active management.** Resizes containers in-place first; falls back to eviction only when in-place resize is not possible (Kubernetes ≥ 1.33 with `InPlacePodVerticalScaling` enabled) |
+| `Auto`              | Alias for `InPlaceOrRecreate` in recent VPA versions; prefer explicit `InPlaceOrRecreate`                                                                                                           |
 
 ## Viewing recommendations
 
@@ -59,7 +60,8 @@ kubectl describe vpa my-app -n my-namespace
 ```
 
 Look for the `Recommendation` section. When satisfied with the values, promote to
-`updateMode: "Initial"` for stateless workloads.
+`updateMode: "InPlaceOrRecreate"` — it resizes in-place first and only evicts as
+a fallback, making it the preferred active mode for all workloads.
 
 ## File naming
 
