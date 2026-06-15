@@ -27,6 +27,8 @@ spec:
           replicaCount: 1
         admissionController:
           replicaCount: 1
+          extraArgs:
+            - --feature-gates=InPlace=true
   destination:
     server: https://kubernetes.default.svc
     namespace: vpa
