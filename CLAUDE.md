@@ -65,14 +65,15 @@ See `kubernetes/CLAUDE.md` for the full bootstrap procedure and pre-merge checkl
 
 ## Custom skills and agents
 
-Four skills in `.claude/skills/`:
+Five skills in `.claude/skills/`:
 
-| Skill                | Purpose                                                                              |
-| -------------------- | ------------------------------------------------------------------------------------ |
-| `add-infra-app`      | Guided walkthrough for adding a new infrastructure component to `01_infrastructure/` |
-| `talos-regen-apply`  | Regenerate Talos control plane config and apply to all nodes                         |
-| `validate-manifests` | Build manifests with kustomize and run yamllint + k8svalidate                        |
-| `argocd-bootstrap`   | Step-by-step ArgoCD bootstrap (user-invocable only)                                  |
+| Skill                | Purpose                                                                                 |
+| -------------------- | --------------------------------------------------------------------------------------- |
+| `add-infra-app`      | Guided walkthrough for adding a new infrastructure component to `01_infrastructure/`    |
+| `plan-application`   | Guided walkthrough for planning a new user-facing application in `02_applications/apps` |
+| `talos-regen-apply`  | Regenerate Talos control plane config and apply to all nodes                            |
+| `validate-manifests` | Build manifests with kustomize and run yamllint + k8svalidate                           |
+| `argocd-bootstrap`   | Step-by-step ArgoCD bootstrap (user-invocable only)                                     |
 
 Two agents in `.claude/agents/`:
 
