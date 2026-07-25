@@ -14,7 +14,7 @@ spec:
   source:
     repoURL: https://k8up-io.github.io/k8up
     chart: k8up
-    targetRevision: "4.9.x"
+    targetRevision: "4.10.x"
     helm:
       releaseName: k8up
       values: |
