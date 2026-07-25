@@ -4,6 +4,10 @@ kind: Certificate
 metadata:
   name: demo-public-tls
   namespace: demo
+  labels:
+    app.kubernetes.io/name: demo
+    app.kubernetes.io/instance: demo
+    app.kubernetes.io/managed-by: argocd
 spec:
   secretName: demo-public-tls
   issuerRef:

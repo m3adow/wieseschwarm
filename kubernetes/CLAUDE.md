@@ -309,6 +309,31 @@ The SOPS operator (in `sops-secrets-operator` namespace) decrypts them at runtim
 
 **NEVER run `sops --decrypt` or any equivalent command to read secret contents.** If a secret file needs to be modified (e.g. adding a field or label), tell the user exactly what change is needed and let them perform the decryption, editing, and re-encryption themselves.
 
+## Recommended labels
+
+Every object in `kubernetes/02_applications/<app>/` **must** carry Kubernetes' [recommended labels](https://kubernetes.io/docs/concepts/overview/working-with-objects/common-labels/) under `metadata.labels`. This repo uses a minimal 3-label subset — `component`, `part-of`, and `version` are skipped by default since on a single-component app they'd just repeat the app name with no disambiguating value; add them only when an app actually has multiple components or a real version to track:
+
+```yaml
+metadata:
+  labels:
+    app.kubernetes.io/name: <app>
+    app.kubernetes.io/instance: <app>
+    app.kubernetes.io/managed-by: argocd
+```
+
+**Selectors use `app.kubernetes.io/name` only** — never `/instance` or any other recommended label. `Deployment.spec.selector.matchLabels`, `Service.spec.selector`, and `ServiceMonitor`/`PodMonitor` `spec.selector.matchLabels` (see "Application metrics scraping" above) all key on `app.kubernetes.io/name: <app>` alone; the pod template and every other object's `metadata.labels` still carry the full 3-label set.
+
+**`Deployment.spec.selector.matchLabels` is immutable once the Deployment exists in the cluster.** Setting this correctly from the start (new apps: use `/plan-application`, which does this by default) avoids the problem entirely. Retrofitting labels onto an **already-deployed** app that needs to change its selector requires deleting the live Deployment so ArgoCD recreates it fresh — `kubectl apply`/ArgoCD sync will otherwise fail with an immutable-field error:
+
+```bash
+kubectl delete deployment <app> -n <app>
+# then let the next ArgoCD sync recreate it with the new selector
+```
+
+`Service.spec.selector` is mutable but must keep matching a label the pod template actually carries — update both in the same commit.
+
+`kubernetes/02_applications/demo/` is the reference example (`deployment-demo.yaml`, `service-demo.yaml`, `servicemonitor-demo.yaml`).
+
 ## File naming conventions
 
 All YAML files in `kubernetes/` follow `<kind>-[patch-]<descriptive-name>.yaml`:
