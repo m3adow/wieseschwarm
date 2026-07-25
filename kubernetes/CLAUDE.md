@@ -162,6 +162,16 @@ When used inside a `SopsSecret` template, these annotations are stored as plaint
 
 A common use: annotate the wildcard TLS Secret produced by cert-manager so application namespaces can mount the same certificate without duplicating the `Certificate` resource.
 
+### Application metrics scraping
+
+Grafana Alloy's `prometheusOperatorObjects` feature (`kubernetes/01_infrastructure/grafana-alloy/application-grafana-alloy.yaml`) discovers `ServiceMonitor`/`PodMonitor` CRDs cluster-wide — no namespace or label filter, every app in this homelab is trusted to declare its own monitor.
+
+To onboard an app that exposes a Prometheus-format `/metrics` endpoint, add a `ServiceMonitor` (preferred, when the app has a stable Service) or `PodMonitor` (when scraping pods directly) next to the app's other manifests — `servicemonitor-<app>.yaml` / `podmonitor-<app>.yaml` per the file naming convention below — and wire it into that app's `kustomization.yaml` in alphabetical order.
+
+**Trap:** a `ServiceMonitor`'s `spec.selector.matchLabels` matches the Service's own `metadata.labels` — **not** `spec.selector` (which only selects the backing Pods, a different field entirely). A Service with no `metadata.labels` block will match nothing, and the failure is silent: `kustomize build` and `yamllint` both pass regardless, it only surfaces as missing scrape targets at runtime. Make sure the target Service actually carries `metadata.labels` matching the ServiceMonitor's selector — compare `demo/servicemonitor-demo.yaml` against `demo/service-demo.yaml`, where `metadata.labels.app: demo` on the Service is what the ServiceMonitor's selector matches, distinct from the Service's own `spec.selector.app: demo` used to find the backing Pods.
+
+Also note `endpoints[].port` refers to the Service's/Pod's **named port** (e.g. `metrics`), not a raw port number.
+
 ## Public exposure (Cloudflare Tunnel + external-dns)
 
 Public internet exposure runs through a Cloudflare Tunnel (`cloudflared`, 2 replicas) to Traefik. Tunnel routing is **git-managed** in the cloudflared ConfigMap: a single wildcard ingress rule (`*.wieseclan.eu.org` → `https://traefik.traefik.svc.cluster.local:443`, `noTLSVerify: true`) routes everything to Traefik, so per-app exposure never touches the tunnel config.

@@ -57,6 +57,14 @@ spec:
               - "go_*"
               - "rest_client_*" # kube-apiserver client latency histograms with high cardinality
 
+        # Discovers ServiceMonitor/PodMonitor CRDs cluster-wide (no namespace/label
+        # filter — every app in this homelab is trusted to declare its own monitor).
+        # Uses the CRDs from prometheus-operator-crds (wave -4); no separate
+        # Prometheus Operator controller process is needed, Alloy watches directly.
+        prometheusOperatorObjects:
+          enabled: true
+          collector: alloy-metrics
+
         clusterEvents:
           enabled: true
           collector: alloy-singleton
