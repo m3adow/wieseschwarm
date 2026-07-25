@@ -14,7 +14,7 @@ spec:
   source:
     repoURL: https://prometheus-community.github.io/helm-charts
     chart: prometheus-operator-crds
-    targetRevision: "29.x"
+    targetRevision: "30.x"
   destination:
     server: https://kubernetes.default.svc
     namespace: monitoring
