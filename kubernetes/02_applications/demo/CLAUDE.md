@@ -5,16 +5,16 @@ that exercises every infrastructure primitive in the cluster and doubles as a sm
 test after upgrades or rebuilds: if the demo is healthy, storage, database, backup,
 metrics, ingress, certificates, and autoscaling all work.
 
-| Primitive       | Exercised by                                                                    |
-| --------------- | ------------------------------------------------------------------------------- |
-| Piraeus storage | `persistentvolumeclaim-demo.yaml` (RWO, default StorageClass)                   |
-| MariaDB CRs     | `database-demo.yaml`, `user-demo.yaml`, `grant-demo.yaml`                       |
-| K8up backup     | `schedule-demo-k8up.yaml` + `sopssecret-demo-k8up-b2.yaml`                      |
-| Metrics/alerts  | `prometheusrule-demo.yaml` (scraped via Grafana Alloy)                          |
-| LAN ingress     | `ingressroute-demo-lan.yaml` (`demo.wieseschwarm.lan`, default TLSStore)        |
-| Public ingress  | `ingressroute-demo-public.yaml` (`demo.wieseclan.eu.org` via Cloudflare Tunnel) |
-| cert-manager    | `certificate-demo-public.yaml` (Let's Encrypt production)                       |
-| VPA             | `verticalpodautoscaler-demo.yaml`                                               |
+| Primitive       | Exercised by                                                                                             |
+| --------------- | -------------------------------------------------------------------------------------------------------- |
+| Piraeus storage | `persistentvolumeclaim-demo.yaml` (RWO, default StorageClass)                                            |
+| MariaDB CRs     | `database-demo.yaml`, `user-demo.yaml`, `grant-demo.yaml`                                                |
+| K8up backup     | `schedule-demo-k8up.yaml` + `sopssecret-demo-k8up-b2.yaml`                                               |
+| Metrics/alerts  | `servicemonitor-demo.yaml` (scrape config) + `prometheusrule-demo.yaml` (alerts), both via Grafana Alloy |
+| LAN ingress     | `ingressroute-demo-lan.yaml` (`demo.wieseschwarm.lan`, default TLSStore)                                 |
+| Public ingress  | `ingressroute-demo-public.yaml` (`demo.wieseclan.eu.org` via Cloudflare Tunnel)                          |
+| cert-manager    | `certificate-demo-public.yaml` (Let's Encrypt production)                                                |
+| VPA             | `verticalpodautoscaler-demo.yaml`                                                                        |
 
 ## Intentional deviations from production patterns
 
