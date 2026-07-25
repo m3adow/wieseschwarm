@@ -162,6 +162,16 @@ When used inside a `SopsSecret` template, these annotations are stored as plaint
 
 A common use: annotate the wildcard TLS Secret produced by cert-manager so application namespaces can mount the same certificate without duplicating the `Certificate` resource.
 
+### Application metrics scraping
+
+Grafana Alloy's `prometheusOperatorObjects` feature (`kubernetes/01_infrastructure/grafana-alloy/application-grafana-alloy.yaml`) discovers `ServiceMonitor`/`PodMonitor` CRDs cluster-wide — no namespace or label filter, every app in this homelab is trusted to declare its own monitor.
+
+To onboard an app that exposes a Prometheus-format `/metrics` endpoint, add a `ServiceMonitor` (preferred, when the app has a stable Service) or `PodMonitor` (when scraping pods directly) next to the app's other manifests — `servicemonitor-<app>.yaml` / `podmonitor-<app>.yaml` per the file naming convention below — and wire it into that app's `kustomization.yaml` in alphabetical order.
+
+**Trap:** a `ServiceMonitor`'s `spec.selector.matchLabels` matches the Service's own `metadata.labels` — **not** `spec.selector` (which only selects the backing Pods, a different field entirely). A Service with no `metadata.labels` block will match nothing, and the failure is silent: `kustomize build` and `yamllint` both pass regardless, it only surfaces as missing scrape targets at runtime. Make sure the target Service actually carries `metadata.labels` matching the ServiceMonitor's selector — compare `demo/servicemonitor-demo.yaml` against `demo/service-demo.yaml`, where `metadata.labels.app: demo` on the Service is what the ServiceMonitor's selector matches, distinct from the Service's own `spec.selector.app: demo` used to find the backing Pods.
+
+Also note `endpoints[].port` refers to the Service's/Pod's **named port** (e.g. `metrics`), not a raw port number.
+
 ## Public exposure (Cloudflare Tunnel + external-dns)
 
 Public internet exposure runs through a Cloudflare Tunnel (`cloudflared`, 2 replicas) to Traefik. Tunnel routing is **git-managed** in the cloudflared ConfigMap: a single wildcard ingress rule (`*.wieseclan.eu.org` → `https://traefik.traefik.svc.cluster.local:443`, `noTLSVerify: true`) routes everything to Traefik, so per-app exposure never touches the tunnel config.
@@ -298,6 +308,31 @@ Files containing `SopsSecret` CRDs **must** be named `sopssecret-<descriptive-na
 The SOPS operator (in `sops-secrets-operator` namespace) decrypts them at runtime using the age key mounted from secret `sops-age-key`.
 
 **NEVER run `sops --decrypt` or any equivalent command to read secret contents.** If a secret file needs to be modified (e.g. adding a field or label), tell the user exactly what change is needed and let them perform the decryption, editing, and re-encryption themselves.
+
+## Recommended labels
+
+Every object in `kubernetes/02_applications/<app>/` **must** carry Kubernetes' [recommended labels](https://kubernetes.io/docs/concepts/overview/working-with-objects/common-labels/) under `metadata.labels`. This repo uses a minimal 3-label subset — `component`, `part-of`, and `version` are skipped by default since on a single-component app they'd just repeat the app name with no disambiguating value; add them only when an app actually has multiple components or a real version to track:
+
+```yaml
+metadata:
+  labels:
+    app.kubernetes.io/name: <app>
+    app.kubernetes.io/instance: <app>
+    app.kubernetes.io/managed-by: argocd
+```
+
+**Selectors use `app.kubernetes.io/name` only** — never `/instance` or any other recommended label. `Deployment.spec.selector.matchLabels`, `Service.spec.selector`, and `ServiceMonitor`/`PodMonitor` `spec.selector.matchLabels` (see "Application metrics scraping" above) all key on `app.kubernetes.io/name: <app>` alone; the pod template and every other object's `metadata.labels` still carry the full 3-label set.
+
+**`Deployment.spec.selector.matchLabels` is immutable once the Deployment exists in the cluster.** Setting this correctly from the start (new apps: use `/plan-application`, which does this by default) avoids the problem entirely. Retrofitting labels onto an **already-deployed** app that needs to change its selector requires deleting the live Deployment so ArgoCD recreates it fresh — `kubectl apply`/ArgoCD sync will otherwise fail with an immutable-field error:
+
+```bash
+kubectl delete deployment <app> -n <app>
+# then let the next ArgoCD sync recreate it with the new selector
+```
+
+`Service.spec.selector` is mutable but must keep matching a label the pod template actually carries — update both in the same commit.
+
+`kubernetes/02_applications/demo/` is the reference example (`deployment-demo.yaml`, `service-demo.yaml`, `servicemonitor-demo.yaml`).
 
 ## File naming conventions
 

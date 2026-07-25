@@ -5,16 +5,16 @@ that exercises every infrastructure primitive in the cluster and doubles as a sm
 test after upgrades or rebuilds: if the demo is healthy, storage, database, backup,
 metrics, ingress, certificates, and autoscaling all work.
 
-| Primitive       | Exercised by                                                                    |
-| --------------- | ------------------------------------------------------------------------------- |
-| Piraeus storage | `persistentvolumeclaim-demo.yaml` (RWO, default StorageClass)                   |
-| MariaDB CRs     | `database-demo.yaml`, `user-demo.yaml`, `grant-demo.yaml`                       |
-| K8up backup     | `schedule-demo-k8up.yaml` + `sopssecret-demo-k8up-b2.yaml`                      |
-| Metrics/alerts  | `prometheusrule-demo.yaml` (scraped via Grafana Alloy)                          |
-| LAN ingress     | `ingressroute-demo-lan.yaml` (`demo.wieseschwarm.lan`, default TLSStore)        |
-| Public ingress  | `ingressroute-demo-public.yaml` (`demo.wieseclan.eu.org` via Cloudflare Tunnel) |
-| cert-manager    | `certificate-demo-public.yaml` (Let's Encrypt production)                       |
-| VPA             | `verticalpodautoscaler-demo.yaml`                                               |
+| Primitive       | Exercised by                                                                                             |
+| --------------- | -------------------------------------------------------------------------------------------------------- |
+| Piraeus storage | `persistentvolumeclaim-demo.yaml` (RWO, default StorageClass)                                            |
+| MariaDB CRs     | `database-demo.yaml`, `user-demo.yaml`, `grant-demo.yaml`                                                |
+| K8up backup     | `schedule-demo-k8up.yaml` + `sopssecret-demo-k8up-b2.yaml`                                               |
+| Metrics/alerts  | `servicemonitor-demo.yaml` (scrape config) + `prometheusrule-demo.yaml` (alerts), both via Grafana Alloy |
+| LAN ingress     | `ingressroute-demo-lan.yaml` (`demo.wieseschwarm.lan`, default TLSStore)                                 |
+| Public ingress  | `ingressroute-demo-public.yaml` (`demo.wieseclan.eu.org` via Cloudflare Tunnel)                          |
+| cert-manager    | `certificate-demo-public.yaml` (Let's Encrypt production)                                                |
+| VPA             | `verticalpodautoscaler-demo.yaml`                                                                        |
 
 ## Intentional deviations from production patterns
 
@@ -29,6 +29,23 @@ metrics, ingress, certificates, and autoscaling all work.
 - **Monthly K8up schedule with `keepLast: 1`**: demo pacing only, to show the
   mechanism without burning B2 storage. Real apps should use the nightly
   schedule/retention template from `kubernetes/01_infrastructure/k8up/CLAUDE.md`.
+
+## Label migration (one-time manual step)
+
+This app's objects were migrated to Kubernetes' recommended labels (see "Recommended
+labels" in `kubernetes/CLAUDE.md`) after the Deployment was already live in the cluster.
+Because `Deployment.spec.selector.matchLabels` is immutable, the selector change from
+`app: demo` to `app.kubernetes.io/name: demo` will make ArgoCD's next sync attempt fail
+with an immutable-field error unless the existing Deployment is deleted first:
+
+```bash
+kubectl delete deployment demo -n demo
+```
+
+Run this once, right before/at the sync that picks up this change — ArgoCD recreates the
+Deployment fresh with the new selector on the next reconcile. `Service.spec.selector` is
+mutable and updates in place; no similar step is needed for it. This note can be removed
+once the migration has happened.
 
 ## Public exposure
 
