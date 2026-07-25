@@ -84,4 +84,6 @@ Two agents in `.claude/agents/`:
 
 ## Renovate
 
-`renovate.json` auto-bumps Helm chart versions in Application specs. Review Renovate PRs before merging — chart upgrades may require wave-ordering or values changes.
+`renovate.json` auto-bumps Helm chart versions in Application specs. Minor and patch updates (`packageRules` automerge entry) are auto-merged via GitHub's native auto-merge once required status checks pass — this includes Helm chart bumps, so a passing CI run does not guarantee wave-ordering or values compatibility was considered. Major updates still open as regular PRs requiring manual review and merge.
+
+Auto-merge depends on repo-level settings that aren't visible in this tree: `allow_auto_merge` is enabled on the repo, and branch protection on `main` requires the `checks` and `pre-commit` status checks before any merge (including auto-merge).
