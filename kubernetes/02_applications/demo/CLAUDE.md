@@ -30,23 +30,6 @@ metrics, ingress, certificates, and autoscaling all work.
   mechanism without burning B2 storage. Real apps should use the nightly
   schedule/retention template from `kubernetes/01_infrastructure/k8up/CLAUDE.md`.
 
-## Label migration (one-time manual step)
-
-This app's objects were migrated to Kubernetes' recommended labels (see "Recommended
-labels" in `kubernetes/CLAUDE.md`) after the Deployment was already live in the cluster.
-Because `Deployment.spec.selector.matchLabels` is immutable, the selector change from
-`app: demo` to `app.kubernetes.io/name: demo` will make ArgoCD's next sync attempt fail
-with an immutable-field error unless the existing Deployment is deleted first:
-
-```bash
-kubectl delete deployment demo -n demo
-```
-
-Run this once, right before/at the sync that picks up this change — ArgoCD recreates the
-Deployment fresh with the new selector on the next reconcile. `Service.spec.selector` is
-mutable and updates in place; no similar step is needed for it. This note can be removed
-once the migration has happened.
-
 ## Public exposure
 
 `demo.wieseclan.eu.org` is exposed to the internet through the Cloudflare Tunnel —
