@@ -53,29 +53,35 @@ Show the user what will be applied and ask for confirmation before proceeding.
 
 ## Step 5 — Apply per node (from repo root)
 
-Each node gets the base `controlplane.yaml` plus its device-specific disk selector patch.
+Each node gets the base `controlplane.yaml`, its device-specific disk selector patch, and its
+hostname patch. **All three are required — never drop the hostname patch** (see Notes).
+
+**Node IPs and the exact ready-to-run per-node commands live in `talos/CLAUDE.local.md`**
+(gitignored) under "Applying config to nodes" — read that file and run the commands from there.
+This repository is public, so node addresses are kept out of it.
+
+The general form is:
 
 ```bash
-# wieseschwarm-1 — Kingston SSD
-talosctl apply-config --nodes 192.168.10.11 \
+talosctl apply-config --nodes <node-ip> \
   --file talos/secret/controlplane.yaml \
-  --config-patch @talos/device-specific/wieseschwarm-1-and-3-patch.yaml
-
-# wieseschwarm-3 — Kingston SSD
-talosctl apply-config --nodes 192.168.10.13 \
-  --file talos/secret/controlplane.yaml \
-  --config-patch @talos/device-specific/wieseschwarm-1-and-3-patch.yaml
-
-# wieseschwarm-2 — Samsung NVMe (no separate storage disk)
-talosctl apply-config --nodes 192.168.10.12 \
-  --file talos/secret/controlplane.yaml \
-  --config-patch @talos/device-specific/wieseschwarm-2-patch.yaml
+  --config-patch @talos/device-specific/<disk-selector-patch>.yaml \
+  --config-patch @talos/device-specific/<node>-hostname-patch.yaml
 ```
 
 Apply nodes one at a time and wait for each to succeed before moving to the next.
 
+Verify with `--dry-run` first — it prints the exact config diff without applying anything.
+
 ## Notes
 
+- **Never apply config to a node without its `*-hostname-patch.yaml`.** The generated base config
+  sets `HostnameConfig.auto: stable`, which invents a `talos-<generated>` hostname whenever no
+  higher-priority source supplies one. On 2026-08-02 the DHCP server stopped sending option 12, all
+  three nodes rebooted into generated hostnames and re-registered as **new** Kubernetes nodes,
+  orphaning the LINSTOR satellites and the hostname-pinned `storage-node-wieseschwarm-2` satellite
+  configuration. 107 of 164 pods were left unhealthy. The hostname patches pin the name as a static
+  hostname (highest priority, overrides DHCP), so applying without them re-arms the same failure.
 - `TALOSCONFIG` must point to `talos/secret/talosconfig` (or be set already in the shell). If commands
   fail with auth errors, remind the user: `export TALOSCONFIG=$(pwd)/talos/secret/talosconfig`
 - Never use `talosctl machineconfig patch` — it appends list fields on every run, causing duplicate

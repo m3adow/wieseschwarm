@@ -1,0 +1,14 @@
+---
+# Pins the hostname for wieseschwarm-2. (Node IP: see talos/CLAUDE.local.md.)
+#
+# See wieseschwarm-1-hostname-patch.yaml for the full rationale.
+#
+# This node is especially sensitive to hostname drift: its Piraeus storage pool
+# is selected by the hostname-pinned LinstorSatelliteConfiguration
+# `storage-node-wieseschwarm-2` (kubernetes/01_infrastructure/piraeus/
+# linstorsatelliteconfiguration-piraeus.yaml). Under any other hostname that
+# selector stops matching and the node falls back to the wrong storage device.
+apiVersion: v1alpha1
+kind: HostnameConfig
+hostname: wieseschwarm-2
+auto: "off"

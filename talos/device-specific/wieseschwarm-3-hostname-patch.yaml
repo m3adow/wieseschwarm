@@ -1,0 +1,8 @@
+---
+# Pins the hostname for wieseschwarm-3. (Node IP: see talos/CLAUDE.local.md.)
+#
+# See wieseschwarm-1-hostname-patch.yaml for the full rationale.
+apiVersion: v1alpha1
+kind: HostnameConfig
+hostname: wieseschwarm-3
+auto: "off"

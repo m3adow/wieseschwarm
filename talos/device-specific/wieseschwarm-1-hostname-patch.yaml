@@ -1,0 +1,16 @@
+---
+# Pins the hostname for wieseschwarm-1. (Node IP: see talos/CLAUDE.local.md.)
+#
+# The generated base config sets `auto: stable`, which derives a hostname from
+# machine identity whenever no higher-priority source supplies one. When DHCP
+# stopped sending option 12 on 2026-08-02, all three nodes booted as
+# `talos-<generated>` and registered as new Kubernetes nodes, orphaning the
+# LINSTOR satellites bound to the original names.
+#
+# A static hostname is the highest-priority source and overrides DHCP, so node
+# identity no longer depends on the DHCP server being reachable at boot.
+# `auto` must be turned off explicitly — it conflicts with a static hostname.
+apiVersion: v1alpha1
+kind: HostnameConfig
+hostname: wieseschwarm-1
+auto: "off"
