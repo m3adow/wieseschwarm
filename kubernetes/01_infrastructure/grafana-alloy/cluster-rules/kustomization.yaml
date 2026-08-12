@@ -7,6 +7,7 @@ namespace: monitoring
 resources:
   - prometheusrule-cluster-apps.yaml
   - prometheusrule-cluster-metrics-pipeline.yaml
+  - prometheusrule-cluster-node-exporter.yaml
   - prometheusrule-cluster-nodes.yaml
   - prometheusrule-cluster-pods.yaml
   - prometheusrule-series-budget.yaml
