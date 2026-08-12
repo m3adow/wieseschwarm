@@ -311,15 +311,30 @@ The SOPS operator (in `sops-secrets-operator` namespace) decrypts them at runtim
 
 ## Recommended labels
 
-Every object in `kubernetes/02_applications/<app>/` **must** carry Kubernetes' [recommended labels](https://kubernetes.io/docs/concepts/overview/working-with-objects/common-labels/) under `metadata.labels`. This repo uses a minimal 3-label subset — `component`, `part-of`, and `version` are skipped by default since on a single-component app they'd just repeat the app name with no disambiguating value; add them only when an app actually has multiple components or a real version to track:
+Every object in `kubernetes/02_applications/<app>/` **must** carry Kubernetes' [recommended labels](https://kubernetes.io/docs/concepts/overview/working-with-objects/common-labels/) under `metadata.labels`. This repo uses a minimal 3-label subset — `component`, `part-of`, and `version` are skipped by default since on a single-component app they'd just repeat the app name with no disambiguating value; add them only when an app actually has multiple components or a real version to track.
+
+**Preferred: apply them via the app's `kustomization.yaml` `labels:` transformer, not by hand-editing every resource file.** This keeps the label set DRY and impossible to get out of sync across files. Split it into two entries so the selector rule below is enforced automatically instead of relying on every file being edited correctly by hand:
 
 ```yaml
-metadata:
-  labels:
-    app.kubernetes.io/name: <app>
-    app.kubernetes.io/instance: <app>
-    app.kubernetes.io/managed-by: argocd
+labels:
+  - pairs:
+      app.kubernetes.io/name: <app>
+    includeSelectors: true
+    includeTemplates: true
+  - pairs:
+      app.kubernetes.io/instance: <app>
+      app.kubernetes.io/managed-by: argocd
+    includeSelectors: false
+    includeTemplates: true
 ```
+
+Kustomize synthesizes `Deployment.spec.selector.matchLabels` / `Service.spec.selector` from scratch if a resource file omits them entirely — you do not need to (and should not) hand-write selector fields or `metadata.labels` on individual resources once the app's `kustomization.yaml` declares this. `kubernetes/02_applications/apps/wikijs/kustomization.yaml` is the reference example.
+
+**Exception: SopsSecret files.** SOPS computes a MAC over the _entire_ decrypted document tree — not just the fields matched by `encrypted_regex` — specifically to detect tampering with plaintext fields too. Confirmed the hard way: hand-editing a `SopsSecret`'s plaintext `metadata.labels` after encryption (even though `labels` sits outside `encrypted_regex: ^(stringData|data)$`) broke MAC verification and made the file fail to decrypt. **Never hand-edit any field in an already-encrypted SopsSecret file, plaintext or not** — the repo's existing "never `sops --decrypt`" rule (see "Secrets" above) implicitly covers this, but it's easy to assume non-`encrypted_regex` fields are safe to touch directly. They are not. If a SopsSecret needs new labels, either add them before the first encryption, or decrypt → edit → re-encrypt properly.
+
+Whether the kustomize `labels:` transformer _itself_ additionally breaks a SopsSecret's MAC at ArgoCD-apply time (by relabeling the rendered object before the SOPS operator reads it back) is unconfirmed — untested as of this writing. Until verified, don't rely on it being harmless: keep letting `SopsSecret` files carry their own manual label block (unaffected either way if the transformer does turn out to be safe), and treat a live MAC-mismatch after a clean re-encrypt (no manual edits involved) as evidence that it isn't.
+
+`kubernetes/02_applications/demo/` predates this convention and still hand-writes labels on every file — that pattern still works and is not being retrofitted, but new apps should use the kustomize transformer.
 
 **Selectors use `app.kubernetes.io/name` only** — never `/instance` or any other recommended label. `Deployment.spec.selector.matchLabels`, `Service.spec.selector`, and `ServiceMonitor`/`PodMonitor` `spec.selector.matchLabels` (see "Application metrics scraping" above) all key on `app.kubernetes.io/name: <app>` alone; the pod template and every other object's `metadata.labels` still carry the full 3-label set.
 
