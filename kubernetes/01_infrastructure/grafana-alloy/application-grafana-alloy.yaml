@@ -32,6 +32,17 @@ spec:
               type: basic
               usernameKey: username-prometheus
               passwordKey: password
+            # Cluster-wide default: drops these regardless of source (clusterMetrics,
+            # hostMetrics, ServiceMonitor-scraped apps, anything future). Complements,
+            # not replaces, the per-source metricsTuning below — this is the safety
+            # net every metric passes through before leaving the cluster; per-source
+            # metricsTuning is still where to fine-tune what Alloy scrapes at all.
+            metricProcessingRules: |
+              write_relabel_config {
+                source_labels = ["__name__"]
+                regex          = "go_.*|rest_client_.*"
+                action         = "drop"
+              }
 
           grafana-cloud-logs:
             type: loki
