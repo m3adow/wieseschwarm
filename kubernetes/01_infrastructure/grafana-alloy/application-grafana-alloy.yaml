@@ -45,17 +45,25 @@ spec:
               usernameKey: username-loki
               passwordKey: password
 
-        # useDefaultAllowList keeps active series ~3k-5k on this cluster.
-        # A raw Kubernetes scrape produces ~40k series; the allowlist trims it.
-        # Never disable this without measuring series count first.
+        # useDefaultAllowList keeps active series ~3k-5k on this cluster — this is
+        # already the chart default for every individual source below, not something
+        # this file needs to set explicitly. Never disable a source's allowlist
+        # without measuring series count first.
+        #
+        # metricsTuning is scoped per SOURCE on this feature — there is no top-level
+        # clusterMetrics.metricsTuning key in the chart's schema, so we go per-source.
+        # go_goroutines/rest_client_requests_total are only on kubelet's default
+        # allowlist (cadvisor's and kube-state-metrics' don't include them at all),
+        # so kubelet.metricsTuning is the only place this exclusion belongs.
         clusterMetrics:
           enabled: true
           collector: alloy-metrics
-          metricsTuning:
-            useDefaultAllowList: true
-            excludeMetrics:
-              - "go_*"
-              - "rest_client_*" # kube-apiserver client latency histograms with high cardinality
+          kubelet:
+            metricsTuning:
+              useDefaultAllowList: true
+              excludeMetrics:
+                - "go_.*"
+                - "rest_client_.*" # kube-apiserver client latency histograms with high cardinality
 
         # Discovers ServiceMonitor/PodMonitor CRDs cluster-wide (no namespace/label
         # filter — every app in this homelab is trusted to declare its own monitor).
