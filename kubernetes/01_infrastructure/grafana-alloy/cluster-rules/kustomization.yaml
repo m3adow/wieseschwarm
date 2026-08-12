@@ -5,6 +5,7 @@ kind: Kustomization
 namespace: monitoring
 
 resources:
+  - prometheusrule-cluster-apps.yaml
   - prometheusrule-cluster-metrics-pipeline.yaml
   - prometheusrule-cluster-nodes.yaml
   - prometheusrule-cluster-pods.yaml
