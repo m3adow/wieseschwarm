@@ -10,7 +10,16 @@ cmd="$(printf '%s' "$input" | jq -r '.tool_input.command // empty')"
 # for an actual invocation. Tradeoff: a real push with a quoted branch name like
 # `git push origin 'main'` would be missed; Claude never quotes plain branch names,
 # so this favors avoiding false positives on everyday commands over that rare case.
-stripped="$(printf '%s' "$cmd" | sed -E "s/'[^']*'/''/g; s/\"[^\"]*\"/\"\"/g")"
+#
+# The `:a;N;$!ba` prefix slurps the whole (possibly multi-line) input into a
+# single pattern space before matching. Without it, sed applies s/// per line,
+# so a quoted argument whose closing quote is several lines below its opening
+# quote -- any real commit message with a blank-line-separated body -- never
+# gets matched at all, and ordinary prose anywhere in that body (e.g. a commit
+# message that happens to say "convention on main") leaks through unstripped
+# and can trip the word-boundary match below. Confirmed the hard way: this
+# exact hook's own commit message did that to itself.
+stripped="$(printf '%s' "$cmd" | sed -E ":a;N;\$!ba; s/'[^']*'/''/g; s/\"[^\"]*\"/\"\"/g")"
 
 case "$stripped" in
   *git\ push*) : ;;
