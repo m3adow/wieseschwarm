@@ -92,6 +92,8 @@ Feature gates are configured in `talos/wieseschwarm-all-patch.yaml` under
 When a gate graduates to GA it becomes always-on and can be removed from this list. Verify
 current status before upgrading Kubernetes.
 
+**`UserNamespacesSupport` requires a matching sysctl, or the feature gate is silently non-functional.** Talos defaults `user.max_user_namespaces` to `0`; with the gate enabled but this unset, any pod setting `spec.hostUsers: false` fails pod sandbox creation with `failed to start noop process for unshare: fork/exec /proc/self/exe: no space left on device` — a Linux kernel `ENOSPC` quirk for hitting a `max_*_namespaces` ceiling, not an actual disk-space problem. `wieseschwarm-all-patch.yaml` sets `machine.sysctls.user.max_user_namespaces: "11255"` (Talos's own recommended value) alongside the gate. This bug can stay latent indefinitely — it only surfaces the first time a pod actually sets `hostUsers: false`.
+
 ## Key constraints
 
 - `wieseschwarm-all-patch.yaml` intentionally sets an impossible install disk (`/dev/doesnotexist`) so Talos refuses to install without an explicit device-specific patch — this prevents accidental disk selection on the wrong node.

@@ -8,6 +8,14 @@ machine:
       type: doesnotexist
   features:
     rbac: true
+  # Talos defaults user.max_user_namespaces to 0, which silently makes UserNamespacesSupport
+  # (below) non-functional: any pod setting hostUsers: false fails pod sandbox creation with
+  # "failed to start noop process for unshare: fork/exec /proc/self/exe: no space left on
+  # device" -- a Linux kernel ENOSPC quirk for hitting a max_*_namespaces ceiling, unrelated to
+  # actual disk space. 11255 is the value Talos's own docs recommend.
+  # https://docs.siderolabs.com/kubernetes-guides/security/usernamespace
+  sysctls:
+    user.max_user_namespaces: "11255"
   kubelet:
     extraArgs:
       feature-gates: InPlacePodVerticalScaling=true,RecursiveReadOnlyMounts=true,UserNamespacesSupport=true
