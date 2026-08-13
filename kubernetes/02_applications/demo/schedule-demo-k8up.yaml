@@ -21,14 +21,16 @@ spec:
       accountKeySecretRef:
         name: k8up-b2
         key: account-key
-  backup:
-    # Once per month just to show how backup works
-    schedule: "0 0 1 * *"
-    failedJobsHistoryLimit: 3
-    successfulJobsHistoryLimit: 1
-  prune:
-    schedule: "0 1 1 * *"
-    retention:
-      keepLast: 1
-  check:
-    schedule: "0 0 2 * *"
+  # Disabled: k8up has no suspend field, so omitting every job block is how a
+  # Schedule is made inert. Re-enabling also needs real k8up-b2 credentials.
+  # backup:
+  #   # Once per month just to show how backup works
+  #   schedule: "0 0 1 * *"
+  #   failedJobsHistoryLimit: 3
+  #   successfulJobsHistoryLimit: 1
+  # prune:
+  #   schedule: "0 1 1 * *"
+  #   retention:
+  #     keepLast: 1
+  # check:
+  #   schedule: "0 0 2 * *"

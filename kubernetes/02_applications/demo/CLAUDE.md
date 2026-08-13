@@ -1,15 +1,16 @@
 # Demo application
 
 This app is kept on `main` **deliberately**. It is a living reference implementation
-that exercises every infrastructure primitive in the cluster and doubles as a smoke
-test after upgrades or rebuilds: if the demo is healthy, storage, database, backup,
-metrics, ingress, certificates, and autoscaling all work.
+that exercises nearly every infrastructure primitive in the cluster and doubles as a
+smoke test after upgrades or rebuilds: if the demo is healthy, storage, database,
+metrics, ingress, certificates, and autoscaling all work. Backup is the one
+exception — it is present as a structural example only and is not exercised.
 
 | Primitive       | Exercised by                                                                                             |
 | --------------- | -------------------------------------------------------------------------------------------------------- |
 | Piraeus storage | `persistentvolumeclaim-demo.yaml` (RWO, default StorageClass)                                            |
 | MariaDB CRs     | `database-demo.yaml`, `user-demo.yaml`, `grant-demo.yaml`                                                |
-| K8up backup     | `schedule-demo-k8up.yaml` + `sopssecret-demo-k8up-b2.yaml`                                               |
+| K8up backup     | `schedule-demo-k8up.yaml` + `sopssecret-demo-k8up-b2.yaml` (**disabled** — structure only)               |
 | Metrics/alerts  | `servicemonitor-demo.yaml` (scrape config) + `prometheusrule-demo.yaml` (alerts), both via Grafana Alloy |
 | LAN ingress     | `ingressroute-demo-lan.yaml` (`demo.wieseschwarm.lan`, default TLSStore)                                 |
 | Public ingress  | `ingressroute-demo-public.yaml` (`demo.wieseclan.eu.org` via Cloudflare Tunnel)                          |
@@ -26,14 +27,18 @@ metrics, ingress, certificates, and autoscaling all work.
   `updateMode: InPlaceOrRecreate` would never trigger for the single-replica demo
   Deployment. In-place resize is always attempted first; eviction is the fallback
   and briefly takes the demo down — acceptable here.
-- **Monthly K8up schedule with `keepLast: 1`**: demo pacing only, to show the
-  mechanism without burning B2 storage. Real apps should use the nightly
-  schedule/retention template from `kubernetes/01_infrastructure/k8up/CLAUDE.md`.
+- **K8up backup is disabled**: k8up has no `suspend` field, so the Schedule keeps its
+  `backend` block while every job block (`backup`, `prune`, `check`) stays commented
+  out — a Schedule with no job blocks reconciles to `Ready` and registers no crons.
+  The `k8up-b2` SopsSecret carries deliberately bogus credentials, so uncommenting the
+  job blocks alone will not produce working backups; real B2 credentials are needed
+  too. Real apps should use the nightly schedule/retention template from
+  `kubernetes/01_infrastructure/k8up/CLAUDE.md`.
 
 ## Public exposure
 
 `demo.wieseclan.eu.org` is exposed to the internet through the Cloudflare Tunnel —
 see "Public exposure" in `kubernetes/CLAUDE.md` for the convention (the IngressRoute
 annotation here is the reference example). The app serves a static page and has no
-secrets beyond its own generated DB password and dedicated B2 bucket; removing
-`ingressroute-demo-public.yaml` (and its Certificate) makes it LAN-only.
+secrets beyond its own generated DB password — the `k8up-b2` values are bogus.
+Removing `ingressroute-demo-public.yaml` (and its Certificate) makes it LAN-only.
