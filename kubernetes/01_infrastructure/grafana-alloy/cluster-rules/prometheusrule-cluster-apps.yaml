@@ -1,0 +1,118 @@
+---
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: cluster-apps
+  namespace: monitoring
+  labels:
+    app.kubernetes.io/part-of: grafana-alloy
+spec:
+  groups:
+    - name: kubernetes-apps
+      rules:
+        - alert: KubePodWithoutController
+          expr: |
+            kube_pod_owner{job="integrations/kubernetes/kube-state-metrics", namespace=~".*", owner_kind=""}
+          for: 10m
+          labels:
+            severity: warning
+          annotations:
+            summary: "Pod running without a controller."
+            description: >-
+              Pod {{ $labels.namespace }}/{{ $labels.pod }} has no owning controller
+              (Deployment/StatefulSet/DaemonSet/Job) — it will not be rescheduled if
+              it dies or its node fails.
+        - alert: KubeDeploymentReplicasMismatch
+          expr: |
+            (
+              kube_deployment_spec_replicas{job="integrations/kubernetes/kube-state-metrics", namespace=~".*"}
+                >
+              kube_deployment_status_replicas_available{job="integrations/kubernetes/kube-state-metrics", namespace=~".*"}
+            ) and (
+              changes(kube_deployment_status_replicas_updated{job="integrations/kubernetes/kube-state-metrics", namespace=~".*"}[10m])
+                ==
+              0
+            )
+          for: 15m
+          labels:
+            severity: warning
+          annotations:
+            summary: "Deployment has not matched the expected number of replicas."
+            description: >-
+              Deployment {{ $labels.namespace }}/{{ $labels.deployment }} has not
+              matched the expected number of replicas for longer than 15 minutes.
+        - alert: KubeStatefulSetReplicasMismatch
+          expr: |
+            (
+              kube_statefulset_status_replicas_ready{job="integrations/kubernetes/kube-state-metrics", namespace=~".*"}
+                !=
+              kube_statefulset_replicas{job="integrations/kubernetes/kube-state-metrics", namespace=~".*"}
+            ) and (
+              changes(kube_statefulset_status_replicas_updated{job="integrations/kubernetes/kube-state-metrics", namespace=~".*"}[10m])
+                ==
+              0
+            )
+          for: 15m
+          labels:
+            severity: warning
+          annotations:
+            summary: "StatefulSet has not matched the expected number of replicas."
+            description: >-
+              StatefulSet {{ $labels.namespace }}/{{ $labels.statefulset }} has not
+              matched the expected number of replicas for longer than 15 minutes.
+        - alert: KubeDaemonSetRolloutStuck
+          expr: |
+            (
+              (
+                kube_daemonset_status_current_number_scheduled{job="integrations/kubernetes/kube-state-metrics", namespace=~".*"}
+                  !=
+                kube_daemonset_status_desired_number_scheduled{job="integrations/kubernetes/kube-state-metrics", namespace=~".*"}
+              ) or (
+                kube_daemonset_status_number_misscheduled{job="integrations/kubernetes/kube-state-metrics", namespace=~".*"}
+                  !=
+                0
+              ) or (
+                kube_daemonset_status_updated_number_scheduled{job="integrations/kubernetes/kube-state-metrics", namespace=~".*"}
+                  !=
+                kube_daemonset_status_desired_number_scheduled{job="integrations/kubernetes/kube-state-metrics", namespace=~".*"}
+              ) or (
+                kube_daemonset_status_number_available{job="integrations/kubernetes/kube-state-metrics", namespace=~".*"}
+                  !=
+                kube_daemonset_status_desired_number_scheduled{job="integrations/kubernetes/kube-state-metrics", namespace=~".*"}
+              )
+            ) and (
+              changes(kube_daemonset_status_updated_number_scheduled{job="integrations/kubernetes/kube-state-metrics", namespace=~".*"}[5m])
+                ==
+              0
+            )
+          for: 15m
+          labels:
+            severity: warning
+          annotations:
+            summary: "DaemonSet rollout is stuck."
+            description: >-
+              DaemonSet {{ $labels.namespace }}/{{ $labels.daemonset }} has not
+              finished or progressed for at least 15 minutes.
+        - alert: KubeJobNotCompleted
+          expr: |
+            time() - max by (namespace, job_name) (kube_job_status_start_time{job="integrations/kubernetes/kube-state-metrics", namespace=~".*"}
+              and
+            kube_job_status_active{job="integrations/kubernetes/kube-state-metrics", namespace=~".*"} > 0) > 43200
+          labels:
+            severity: warning
+          annotations:
+            summary: "Job did not complete in time."
+            description: >-
+              Job {{ $labels.namespace }}/{{ $labels.job_name }} is taking more
+              than 12h to complete.
+        - alert: KubeJobFailed
+          expr: |
+            kube_job_failed{job="integrations/kubernetes/kube-state-metrics", namespace=~".*"} > 0
+          for: 15m
+          labels:
+            severity: warning
+          annotations:
+            summary: "Job failed to complete."
+            description: >-
+              Job {{ $labels.namespace }}/{{ $labels.job_name }} failed to complete.
+              Removing the failed job after investigation clears this alert.

@@ -76,6 +76,27 @@ spec:
                 - "go_.*"
                 - "rest_client_.*" # kube-apiserver client latency histograms with high cardinality
 
+        # node-exporter is a SEPARATE feature from clusterMetrics — clusterMetrics has
+        # no node-exporter source at all (it only covers kubelet/cadvisor/apiServer/
+        # kube-state-metrics-style in-cluster sources). hostMetrics.linuxHosts is what
+        # actually scrapes the node-exporter DaemonSet telemetryServices already deploys.
+        hostMetrics:
+          enabled: true
+          collector: alloy-metrics
+          linuxHosts:
+            enabled: true
+            metricsTuning:
+              useDefaultAllowList: true
+              includeMetrics:
+                # NodeFilesystemAlmostOutOfSpace / NodeFileDescriptorLimit / NodeClockNotSynchronising
+                - "node_filesystem_avail_bytes"
+                - "node_filesystem_size_bytes"
+                - "node_filesystem_readonly"
+                - "node_timex_sync_status"
+                - "node_timex_maxerror_seconds"
+                - "node_filefd_allocated"
+                - "node_filefd_maximum"
+
         # Discovers ServiceMonitor/PodMonitor CRDs cluster-wide (no namespace/label
         # filter — every app in this homelab is trusted to declare its own monitor).
         # Uses the CRDs from prometheus-operator-crds (wave -4); no separate

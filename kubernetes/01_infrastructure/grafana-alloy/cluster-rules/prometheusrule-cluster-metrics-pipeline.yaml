@@ -1,0 +1,30 @@
+---
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: cluster-metrics-pipeline
+  namespace: monitoring
+  labels:
+    app.kubernetes.io/part-of: grafana-alloy
+spec:
+  groups:
+    - name: metrics-pipeline.critical
+      interval: 2m
+      rules:
+        - alert: ClusterMetricsMissing
+          expr: |
+            absent(up{job="integrations/kubernetes/kube-state-metrics"})
+            or
+            absent(up{job="integrations/kubernetes/kubelet"})
+          for: 5m
+          labels:
+            severity: critical
+          annotations:
+            summary: "Cluster metrics pipeline appears down"
+            description: >-
+              No kube-state-metrics or kubelet series have been seen for about 10
+              minutes (5m absent() lookback plus the 5m for: duration). Either
+              Alloy's collectors are down, remote-write to Grafana Cloud is
+              broken, or the cluster itself is unreachable. This rule is evaluated
+              server-side by the Mimir ruler, so it keeps firing/resolving correctly
+              even during a full cluster outage.
