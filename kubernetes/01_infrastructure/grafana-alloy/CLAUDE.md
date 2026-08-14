@@ -8,26 +8,84 @@ in-cluster — alerts keep firing/resolving correctly even during a full cluster
 
 ## What's git-managed vs. manual
 
-| Layer                            | Where                                              | Managed         |
-| -------------------------------- | -------------------------------------------------- | --------------- |
-| Metrics/events/logs collection   | `application-grafana-alloy.yaml` values            | git (this repo) |
-| Alert rule definitions           | `cluster-rules/*.yaml` (`PrometheusRule` CRDs)     | git (this repo) |
-| Alertmanager contact points      | Grafana Cloud UI: Alerting → Contact points        | **manual**      |
-| Alertmanager notification policy | Grafana Cloud UI: Alerting → Notification policies | **manual**      |
+| Layer                          | Where                                          | Managed         |
+| ------------------------------ | ---------------------------------------------- | --------------- |
+| Metrics/events/logs collection | `application-grafana-alloy.yaml` values        | git (this repo) |
+| Alert rule definitions         | `cluster-rules/*.yaml` (`PrometheusRule` CRDs) | git (this repo) |
+| Contact points + routing       | Cloud Alertmanager config API (see below)      | **manual**      |
 
-**Why contact points/notification policy are manual:** they live in Grafana Cloud's own
-Alertmanager config, not as a Kubernetes CRD this cluster's ArgoCD can sync. Grafana
-Cloud does have a Terraform provider that can manage these declaratively, but adopting
-it just for two or three contact points would add a second IaC tool/state store to a
-repo that's otherwise pure Kustomize+ArgoCD — not worth it for this cluster's scale.
-Revisit if contact points grow complex enough (many routes, many integrations) that
-manual UI drift becomes a real risk.
+**Why routing is manual:** it lives in Grafana Cloud's Alertmanager, not as a Kubernetes
+CRD this cluster's ArgoCD can sync. The config also embeds the Telegram bot token in
+plaintext, so it could not be committed as-is anyway. Grafana Cloud has a Terraform
+provider that could manage this declaratively, but adopting it for one receiver would add
+a second IaC tool/state store to a repo that's otherwise pure Kustomize+ArgoCD.
 
-Current setup (as of 2026-08-11): two contact points (`email-alerts`, `telegram-alerts`),
-routed by `severity` label — `critical` → both, `warning` → email only. See
-`docs/superpowers/plans/2026-06-09-prometheus-rules-alerts.md` Tasks 5-7 for the original
-setup steps (bot creation, contact point config, notification policy routing) if these
-ever need to be recreated from scratch (e.g. after an account migration).
+## Two Alertmanagers, only one of which matters
+
+Grafana Cloud exposes **two independent Alertmanagers**. Confusing them is the single
+easiest mistake to make here:
+
+| Alertmanager                     | Gets our alerts? | Config location                       |
+| -------------------------------- | ---------------- | ------------------------------------- |
+| Grafana **built-in** ("Grafana") | **No, never**    | Grafana UI: Alerting → Contact points |
+| Grafana **Cloud** (Mimir)        | **Yes**          | Mimir config API (see below)          |
+
+Our `PrometheusRule` CRDs are _data source-managed_ rules: Alloy syncs them to the Mimir
+ruler, the ruler evaluates them, and the ruler dispatches firing alerts to the **Cloud
+Alertmanager**. Grafana's built-in Alertmanager is never in that path, so anything
+configured under Alerting → Contact points / Notification policies has no effect on these
+alerts.
+
+**This cost a full debugging session on 2026-08-13.** A correct Telegram contact point and
+routing tree sat in the built-in Alertmanager and delivered nothing for weeks. Two things
+hid it:
+
+- The contact point **Test** button calls the integration directly and bypasses the
+  Alertmanager, so it passes even when routing is broken or in the wrong Alertmanager. A
+  green Test proves the bot token and chat ID, nothing more.
+- `manageAlerts: false` on the `grafanacloud-wieseschwarm-prom` data source hides these
+  rules from Alerting → Alert rules and Alert activity, so the UI looks empty.
+
+Diagnose delivery with the `grafanacloud-usage` data source, not the UI:
+`grafanacloud_instance_ruler_notifications_sent_total:rate5m` (ruler dispatched),
+`grafanacloud_instance_alertmanager_alerts` (alerts held) and
+`..._alertmanager_notifications_total` (notifications sent). Alerts held with zero
+notifications **and** zero failures means the Alertmanager received the alert and had no
+receiver to send it to.
+
+## Cloud Alertmanager configuration
+
+| Item                | Value                                                                |
+| ------------------- | -------------------------------------------------------------------- |
+| Endpoint            | `https://alertmanager-prod-eu-west-2.grafana.net`                    |
+| Config API          | `GET`/`POST` `/api/v1/alerts`                                        |
+| Basic auth user     | `1636417` (Alertmanager instance ID, not the Prometheus instance ID) |
+| Basic auth password | Access policy token, scopes `alerts:read` + `alerts:write`           |
+
+Read the live config:
+
+```bash
+curl -s -u "1636417:$AM_TOKEN" \
+  https://alertmanager-prod-eu-west-2.grafana.net/api/v1/alerts
+```
+
+`alertmanager_config: ""` means nothing is configured and Mimir falls back to a default
+that silently discards every alert. `mimirtool alertmanager load ./config.yaml` is the
+supported equivalent of a POST.
+
+Current routing (as of 2026-08-13): every severity goes to Telegram; `critical` repeats
+every 2h instead of 4h.
+
+**Email is not configured.** The Cloud Alertmanager has no mail server of its own, so
+`email_configs` needs a `global.smtp_smarthost` pointing at an SMTP relay you supply —
+unlike the built-in Alertmanager, where Grafana Cloud provides SMTP. Adding
+`critical` → Telegram + email therefore means supplying SMTP credentials **and** two
+sibling routes with `continue: true` on the first: a route dispatches to exactly one
+receiver, and the root receiver applies only when no child route matches.
+
+`docs/superpowers/plans/2026-06-09-prometheus-rules-alerts.md` Tasks 5-7 describe the
+original bot creation steps, but its Tasks 6-7 send you to the **wrong Alertmanager** —
+follow the README's Grafana Cloud section instead.
 
 ## Job label reference
 
