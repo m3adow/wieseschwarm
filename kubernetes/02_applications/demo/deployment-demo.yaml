@@ -138,7 +138,7 @@ spec:
               cpu: 200m
               memory: 128Mi
         - name: metrics
-          image: nginx/nginx-prometheus-exporter:1.5.1
+          image: nginx/nginx-prometheus-exporter:1.5.3
           securityContext:
             readOnlyRootFilesystem: true
           args:
