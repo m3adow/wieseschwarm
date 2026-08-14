@@ -69,6 +69,17 @@ spec:
         clusterMetrics:
           enabled: true
           collector: alloy-metrics
+          # No rule in cluster-rules/ references these; they cost ~2.5k of ~8.2k series.
+          # Re-add individually when a rule or dashboard needs one.
+          kube-state-metrics:
+            metricsTuning:
+              useDefaultAllowList: true
+              excludeMetrics:
+                - "kube_deployment_status_condition"
+                - "kube_pod_container_info"
+                - "kube_pod_restart_policy"
+                - "kube_pod_status_reason"
+                - "kube_replicaset_.*"
           kubelet:
             metricsTuning:
               useDefaultAllowList: true
