@@ -74,6 +74,10 @@ spec:
           kube-state-metrics:
             metricsTuning:
               useDefaultAllowList: true
+              # KubeJobFailed reads this; it is not on the chart's default allowlist,
+              # so without it the alert evaluates against no data and never fires.
+              includeMetrics:
+                - "kube_job_failed"
               excludeMetrics:
                 - "kube_deployment_status_condition"
                 - "kube_pod_container_info"
