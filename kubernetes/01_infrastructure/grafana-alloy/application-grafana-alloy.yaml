@@ -146,6 +146,7 @@ spec:
           alloy-metrics:
             presets: [clustered, statefulset]
           alloy-singleton:
+            presets: [singleton]
             extraConfig: |
               remote.kubernetes.secret "mimir_rules_auth" {
                 name      = "grafana-cloud-credentials"
