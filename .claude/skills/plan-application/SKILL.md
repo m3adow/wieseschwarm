@@ -61,7 +61,7 @@ If the app runs a single replica, add `minReplicas: 1` to `updatePolicy` — the
 
 **REQUIRED SUB-SKILL:** Use superpowers:writing-plans to produce the actual plan document from the decisions above.
 
-This repo already adapts that skill's Task/Step format to Kubernetes manifests instead of code — follow the same shape, using `docs/superpowers/plans/2026-06-11-rustdesk.md` and `docs/superpowers/plans/2026-06-15-wikijs.md` as concrete references:
+This repo already adapts that skill's Task/Step format to Kubernetes manifests instead of code — follow the same shape, using `docs/superpowers/plans/2026-06-11-rustdesk.md` and `docs/superpowers/plans/2026-06-15-wikijs.md` as concrete references if they are available:
 
 - Save to `docs/superpowers/plans/YYYY-MM-DD-<app-name>.md`
 - One **Task** per resource or tightly-related group of resources (e.g. namespace + kustomization scaffold, PVC, Deployment, VPA, ingress, backup)
