@@ -16,6 +16,35 @@ The `wieseschwarm-applications` submodule is a **private** GitHub repository. It
 git submodule update --init
 ```
 
+### Public repo, private submodule: what must not cross
+
+This repository is public. Nothing that exists only inside the private `apps/` submodule may be
+named here — not application names, not internal hostnames, usernames, or LAN topology belonging to
+one. That applies to documentation and `.claude/` config exactly as much as to manifests. (The
+submodule's _repository_ name is already public via `.gitmodules`, so there is no need to scrub
+that; it is the app-level detail that must not leak.)
+
+The trap: the submodule is checked out in your working tree, so its app names sit right there while
+you write. Naming one in a `CLAUDE.md` "for concreteness" is the easy mistake, and a reviewer
+reading only the diff will not notice.
+
+- **Need a worked example?** Cite `kubernetes/02_applications/demo/`. It is public and exists for
+  exactly this purpose.
+- **Referring to prior art that happens to live in the submodule?** Describe it without naming it:
+  "some manifests in the applications submodule", not "`<appname>` does X".
+- **Exempt:** the submodule's own `CLAUDE.md` may name its apps freely, as may anything under
+  `docs/superpowers/` — that path is gitignored and never committed.
+
+Check before committing. This derives the names from your local checkout rather than listing them,
+since hardcoding them here would be the very leak it looks for:
+
+```bash
+names=$(ls -d kubernetes/02_applications/apps/*/ | xargs -n1 basename \
+        | grep -vxE 'applications|docs' | paste -sd'|')
+git grep -inE "$names"             # content of tracked files
+git ls-files | grep -inE "$names"  # and tracked filenames
+```
+
 ## Path conventions
 
 Never use absolute paths in `.claude/` config files (settings.json, agent files, skills). Use paths relative to the repository root so the repo works regardless of where it is checked out.
