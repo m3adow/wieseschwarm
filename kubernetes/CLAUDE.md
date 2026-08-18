@@ -226,6 +226,48 @@ external-dns (wave 3, `sources: [traefik-proxy]`) sees the IngressRoute and crea
 See `kubernetes/01_infrastructure/mariadb-operator/CLAUDE.md` for the full `Database`, `User`,
 and `Grant` CR patterns used to provision per-application MariaDB databases.
 
+## Resource requests and limits
+
+**Set CPU requests. Do not set CPU limits.** A request becomes a CFS _share_, which only matters
+under contention and still protects neighbouring pods. A limit becomes a CFS _quota_, which throttles
+the container even when the node has idle CPU going spare. Omitting the limit lets a pod burst into
+unused capacity at nobody's expense — the right trade on a 3-node homelab whose load is bursty and
+whose nodes are mostly idle.
+
+**Memory is the opposite: always set both.** Memory is incompressible, so a pod cannot be squeezed
+back down to its request; without a limit a leak takes the whole node with it. CPU throttling is a
+performance problem, unbounded memory is an availability one.
+
+| Resource | `requests` | `limits`                     |
+| -------- | ---------- | ---------------------------- |
+| `cpu`    | required   | omit unless a reason applies |
+| `memory` | required   | required                     |
+
+Reasons that do justify an explicit CPU limit — state the reason inline where you set it:
+
+- The workload needs QoS class `Guaranteed`, which requires `requests == limits` for **both** cpu and
+  memory on **every** container in the pod. Nothing in this cluster qualifies today: all pods are
+  `Burstable` or `BestEffort`. Note `Guaranteed` is evicted last under node pressure, so this is the
+  one case where dropping the CPU limit has a real cost.
+- A known-runaway process that must be capped rather than allowed to saturate a node.
+
+**kube-linter does not stand in the way.** Its `unset-cpu-requirements` check is enabled by default
+but inspects only the _request_ — verified against v0.8.3, whose failure text reads
+`has cpu request 0`. A container with a CPU request and no CPU limit lints clean, so no
+`ignore-check.kube-linter.io/...` annotation is needed. Dropping the _request_ does fail the hook.
+
+No `LimitRange` exists in any namespace, so nothing injects a default CPU limit behind your back.
+Adding one would silently defeat this convention.
+
+**VPA interaction:** every workload here carries a `VerticalPodAutoscaler` with
+`updateMode: "InPlace"`. VPA scales requests, and with no CPU limit present there is no
+limit-to-request ratio for it to preserve, leaving `resourcePolicy.containerPolicies[].maxAllowed.cpu`
+as the single effective ceiling. Simpler, and the intended behaviour.
+
+`02_applications/demo/deployment-demo.yaml` predates this convention and still sets CPU limits, as do
+some manifests in the applications submodule. They are not being retrofitted; new work follows the
+table above.
+
 ## Non-root workloads
 
 Never run a container as root just to bind a privileged port (< 1024). Use the
