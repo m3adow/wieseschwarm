@@ -76,6 +76,27 @@ Set env vars printed after creation: `export TALOSCONFIG=/tmp/talosconfig.dev KU
 - **Piraeus Datastore** (DRBD + LVM_THIN) for replicated storage. `piraeus-patch.yaml` sets the Talos Image Factory installer with the `siderolabs/drbd` extension and loads `drbd`, `drbd_transport_tcp`, and `dm-thin-pool` kernel modules.
 - **Traefik + Gateway API** for ingress, not `ingress-nginx`.
 
+## Security defaults inherited from Talos
+
+Talos ships CIS-Kubernetes-Benchmark-aligned defaults, so several hardening settings this cluster
+relies on are **not** set by any patch in this directory. They are Talos defaults, which means they
+survive `talosctl gen config` regeneration but are also invisible to `grep` over the git tree.
+
+| Default                               | Effect                                                                                   |
+| ------------------------------------- | ---------------------------------------------------------------------------------------- |
+| `defaultRuntimeSeccompProfileEnabled` | kubelet applies `RuntimeDefault` seccomp to every pod that does not set `seccompProfile` |
+| Pod Security Admission                | `baseline` enforced, `restricted` audited and warned                                     |
+| Secrets encrypted at rest             | via `secretboxEncryptionSecret` generated at cluster creation                            |
+| Audit logging                         | enabled at `Metadata` level                                                              |
+
+Observable at `machine.kubelet.defaultRuntimeSeccompProfileEnabled: true` in the generated
+`secret/controlplane.yaml` and `secret/worker.yaml` — but note `secret/` is gitignored, so those
+files are not a shareable reference. See
+[Talos default hardening and CIS compliance](https://docs.siderolabs.com/talos/v1.13/security/talos-default-hardening-and-cis-compliance)
+for the authoritative list, and check it again on a Talos major upgrade in case a default changes.
+
+What this means for manifests is documented in `kubernetes/CLAUDE.md` under "Non-root workloads".
+
 ## Kubernetes feature gates
 
 Feature gates are configured in `talos/wieseschwarm-all-patch.yaml` under

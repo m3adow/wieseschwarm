@@ -262,6 +262,21 @@ metadata:
       (Kubernetes >= 1.22)
 ```
 
+### seccompProfile is already the cluster default
+
+Do **not** add `seccompProfile: { type: RuntimeDefault }` to new workloads. Talos enables the
+kubelet's `defaultRuntimeSeccompProfileEnabled` by default, so every pod that omits
+`seccompProfile` already receives `RuntimeDefault` — an explicit block is redundant here. See
+`talos/CLAUDE.md`, "Security defaults inherited from Talos".
+
+A few existing manifests set it explicitly. That is harmless and not being retrofitted, but it is
+not the pattern to copy, and its absence elsewhere is not a gap to fix. Nothing enforces either
+choice: kube-linter has no seccomp check in its default set, so this convention is the only thing
+keeping it consistent.
+
+The one case where an explicit block earns its place is a manifest intended to run somewhere other
+than this cluster, where the default cannot be assumed. No manifest in this repo is.
+
 ## Security feature gates
 
 Two security-related kubelet feature gates are enabled cluster-wide (see `talos/CLAUDE.md` for the full gate table).
