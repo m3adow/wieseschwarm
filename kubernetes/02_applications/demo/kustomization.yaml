@@ -1,6 +1,18 @@
 ---
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
+
+labels:
+  - pairs:
+      app.kubernetes.io/name: demo
+    includeSelectors: true
+    includeTemplates: true
+  - pairs:
+      app.kubernetes.io/instance: demo
+      app.kubernetes.io/managed-by: argocd
+    includeSelectors: false
+    includeTemplates: true
+
 resources:
   - certificate-demo-public.yaml
   - configmap-demo-nginx.yaml

@@ -4,10 +4,6 @@ kind: Deployment
 metadata:
   name: demo
   namespace: demo
-  labels:
-    app.kubernetes.io/name: demo
-    app.kubernetes.io/instance: demo
-    app.kubernetes.io/managed-by: argocd
   annotations:
     # kube-linter's unsafe-sysctls default list blanket-flags "net.*";
     # ip_unprivileged_port_start is on the Kubernetes safe-sysctl list.
@@ -19,15 +15,16 @@ spec:
   strategy:
     # Needs to be "Recreate" so the PVC is released before the new pod starts and can be reattached.
     type: Recreate
+  # Schema-required on Deployment, and k8svalidate checks this file standalone.
   selector:
     matchLabels:
       app.kubernetes.io/name: demo
   template:
     metadata:
+      # Explicit so kube-linter's mismatching-selector check passes on this
+      # file standalone; the transformer adds the other two labels at build time.
       labels:
         app.kubernetes.io/name: demo
-        app.kubernetes.io/instance: demo
-        app.kubernetes.io/managed-by: argocd
       annotations:
         configmap.reloader.stakater.com/reload: "demo-nginx"
         secret.reloader.stakater.com/reload: "demo-mariadb-user"
