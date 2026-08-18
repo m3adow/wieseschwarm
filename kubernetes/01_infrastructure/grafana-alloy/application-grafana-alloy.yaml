@@ -125,7 +125,7 @@ spec:
           collector: alloy-singleton
 
         # Streams pod logs from the Kubernetes API server — no DaemonSet needed.
-        podLogsViaKubernetesAPI:
+        podLogsViaKubernetesApi:
           enabled: true
           collector: alloy-singleton
 
