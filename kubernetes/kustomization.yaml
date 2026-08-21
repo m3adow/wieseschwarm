@@ -43,3 +43,7 @@ resources:
   # Applications
   - 02_applications/application-demo.yaml
   - 02_applications/application-wieseschwarm-apps.yaml
+
+  # Root app, self-managed. Must stay wave 0 (no annotation): an earlier wave would
+  # gate the sync on its own health via the Application health check in argocd-cm.
+  - application-apps-of-apps.yaml

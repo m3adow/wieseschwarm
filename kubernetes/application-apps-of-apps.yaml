@@ -4,6 +4,9 @@ kind: Application
 metadata:
   name: apps-of-apps
   namespace: argocd
+  annotations:
+    # Pruning the root would cascade via resources-finalizer to every child app.
+    argocd.argoproj.io/sync-options: Prune=false
   finalizers:
     - resources-finalizer.argocd.argoproj.io
 spec:
@@ -17,7 +20,7 @@ spec:
     namespace: argocd
   syncPolicy:
     automated:
-      prune: true
+      enabled: true
       selfHeal: true
     syncOptions:
       - CreateNamespace=true
