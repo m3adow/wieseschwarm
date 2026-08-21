@@ -14,15 +14,22 @@ kubernetes/
         application.yaml      # Config Application (ArgoCD), higher wave
         kustomization.yaml
         <resources>.yaml
-  apps-of-apps.yaml           # Root Application — syncs everything under kubernetes/
-  kustomization.yaml          # Root: lists all child Application manifests
+  application-apps-of-apps.yaml # Root Application — self-managed, syncs kubernetes/
+  kustomization.yaml            # Root: lists every Application, the root included
 ```
 
 ## App-of-Apps pattern
 
-`apps-of-apps.yaml` is the single entry point. It tells ArgoCD to sync `kubernetes/` from this repo, which picks up all Applications via `kustomization.yaml`. ArgoCD then reconciles each child Application independently.
+`application-apps-of-apps.yaml` is the single entry point. It tells ArgoCD to sync `kubernetes/` from this repo, which picks up every Application via `kustomization.yaml`. ArgoCD then reconciles each child Application independently.
 
-**Do not edit `apps-of-apps.yaml`** unless changing the repo URL or global sync policy. New components go into `kustomization.yaml` as resources pointing to their Application manifests.
+**The root app is self-managed:** it lists itself in `kubernetes/kustomization.yaml`, so that file is the single source of truth for its own spec and `selfHeal` reverts out-of-band edits. Before that was so, nothing rendered the root app and nothing reconciled it, and its live object drifted from git for months undetected. New components still go into `kustomization.yaml` as resources pointing to their Application manifests.
+
+Two properties of the root app are load-bearing. Change either only deliberately:
+
+- **`argocd.argoproj.io/sync-options: Prune=false`.** A commit dropping the root from its own `resources:` list would otherwise make ArgoCD prune the Application, and `resources-finalizer.argocd.argoproj.io` would cascade that deletion through every child Application to its workloads. gitops-engine reads this annotation off the **live** object in `pruneObject()` — the only object a prune task has — so it protects the root even once it is absent from git.
+- **Wave 0, meaning no `sync-wave` annotation.** The `argoproj.io_Application` health check in `argocd-cm` reports Healthy-but-OutOfSync as `Progressing`, and waves gate on health, so the root in an earlier wave would wait on a sync status only the finished sync can produce. Wave 0 is the last wave, and ArgoCD does not gate on health after it.
+
+Because `selfHeal` is on, a `kubectl edit` of the root is reverted within ~3 minutes. To recover from a bad commit to its own spec, remove `spec.syncPolicy.automated` first — nothing re-adds it — then fix the object and restore the block. `make argocd-apps-bootstrap` remains the way to apply the file by hand on a fresh cluster.
 
 ## ArgoCD bootstrap procedure
 
@@ -467,7 +474,7 @@ Always use `--enable-helm`; without it, Helm-sourced resources are silently omit
 
 Before merging to `main`, update every `targetRevision` from the feature branch to `main`:
 
-- `apps-of-apps.yaml`
+- `application-apps-of-apps.yaml`
 - All child `application.yaml` files that reference this repo as source
 
 Run `grep -r "targetRevision" kubernetes/` to find all occurrences.
