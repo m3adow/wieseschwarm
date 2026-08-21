@@ -176,7 +176,7 @@ Also note `endpoints[].port` refers to the Service's/Pod's **named port** (e.g. 
 
 ## Public exposure (Cloudflare Tunnel + external-dns)
 
-Public internet exposure runs through a Cloudflare Tunnel (`cloudflared`, 2 replicas) to Traefik. Tunnel routing is **git-managed** in the cloudflared ConfigMap: a single wildcard ingress rule (`*.wieseclan.eu.org` → `https://traefik.traefik.svc.cluster.local:443`, `noTLSVerify: true`) routes everything to Traefik, so per-app exposure never touches the tunnel config.
+Public internet exposure runs through a Cloudflare Tunnel (`cloudflared`, 2 replicas) to Traefik. Tunnel routing is **git-managed** in the cloudflared ConfigMap: a single wildcard ingress rule (`*.wieseclan.eu.org` → `https://traefik.traefik.svc.cluster.local.:443`, `noTLSVerify: true`) routes everything to Traefik, so per-app exposure never touches the tunnel config.
 
 **Caution:** the tunnel runs with a token, but its remote configuration is empty ("Published application routes" in the Zero Trust dashboard shows none), which is why the local config file applies. Never add routes in the dashboard — a non-empty remote configuration takes precedence and the git-managed ConfigMap would be silently ignored (cloudflare/cloudflared#633).
 
