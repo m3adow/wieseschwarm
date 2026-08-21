@@ -76,10 +76,11 @@ Avoid adding `- ServerSideApply=true` to an Application's `syncOptions` unless t
 
 **Current exceptions:**
 
-| Application              | SSA | SSD | Reason                                                                                                                                                                                                     |
-| ------------------------ | --- | --- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `00_bootstrap/argocd`    | ✓   | ✓   | ArgoCD v3 ships CRDs that exceed the 256 KB annotation limit. `ServerSideDiff=true` delegates comparison to the cluster's own schema, preventing false-positive diffs from new fields in Kubernetes 1.33+. |
-| `01_infrastructure/k8up` | ✓   | ✓   | k8up CRDs also exceed the annotation limit. See `kubernetes/01_infrastructure/k8up/CLAUDE.md` for details.                                                                                                 |
+| Application                                  | SSA | SSD | Reason                                                                                                                                                                                                     |
+| -------------------------------------------- | --- | --- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `00_bootstrap/argocd`                        | ✓   | ✓   | ArgoCD v3 ships CRDs that exceed the 256 KB annotation limit. `ServerSideDiff=true` delegates comparison to the cluster's own schema, preventing false-positive diffs from new fields in Kubernetes 1.33+. |
+| `01_infrastructure/k8up`                     | ✓   | ✓   | k8up CRDs also exceed the annotation limit. See `kubernetes/01_infrastructure/k8up/CLAUDE.md` for details.                                                                                                 |
+| `01_infrastructure/prometheus-operator-crds` | ✓   | ✓   | The `prometheuses` CRD alone is 1.2 MB (`alertmanagers` 906 KB, `thanosrulers` 869 KB), far past the annotation limit. `ServerSideDiff=true` avoids false-positive diffs against the cluster's own schema. |
 
 When adding a new exception, document the reason here and in the component's own `CLAUDE.md`.
 
