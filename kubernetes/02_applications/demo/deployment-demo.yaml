@@ -65,7 +65,7 @@ spec:
               <body>
               <h1>wieseschwarm demo</h1>
               <p>PVC mount: /usr/share/nginx/html</p>
-              <p>DB host: mariadb-cluster-maxscale.mariadb.svc.cluster.local</p>
+              <p>DB host: mariadb-cluster-maxscale.mariadb.svc.cluster.local.</p>
               </body>
               </html>
               EOF
@@ -87,7 +87,7 @@ spec:
             - sh
             - -c
             - |
-              mariadb -h mariadb-cluster-maxscale.mariadb.svc.cluster.local \
+              mariadb -h mariadb-cluster-maxscale.mariadb.svc.cluster.local. \
                     -u demo \
                     -p"${DB_PASSWORD}" \
                     --skip-ssl \

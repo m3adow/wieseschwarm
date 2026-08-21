@@ -86,5 +86,5 @@ spec:
   username: my-app
 ```
 
-The application connects to MaxScale at `mariadb-cluster-maxscale.mariadb.svc.cluster.local:3306`
+The application connects to MaxScale at `mariadb-cluster-maxscale.mariadb.svc.cluster.local.:3306`
 using the credentials from the `my-app-mariadb-user` Secret.

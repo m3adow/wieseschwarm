@@ -57,6 +57,29 @@ Truthy-like values (`true`, `false`, `yes`, `no`, `on`, `off`) must be quoted wh
 
 `*-patch.yaml` files are Kustomize strategic-merge patches, not valid standalone Kubernetes manifests; they are excluded from `k8svalidate`.
 
+## Cluster-internal DNS names
+
+Write every cluster-internal FQDN a workload dials as an **absolute** name, with a trailing dot:
+
+```yaml
+- name: DB_HOST
+  value: mariadb-cluster-maxscale.mariadb.svc.cluster.local.
+```
+
+Pod resolvers run `options ndots:5` with `search <ns>.svc.cluster.local svc.cluster.local cluster.local lan`. A dotless `...svc.cluster.local` has only four dots, below the `ndots` threshold, so the resolver appends every search domain before trying the name as written — four NXDOMAIN round trips per lookup, doubled for A + AAAA, and the `lan` attempt hands the internal service name to the LAN resolver. The trailing dot makes the first query the authoritative one.
+
+This applies wherever a hostname is consumed at runtime: env vars, container args, Helm values, ConfigMap payloads, `cloudflared` tunnel `service:` targets.
+
+**Never add the dot** to a hostname the cluster matches on or requests a certificate for:
+
+| Field                                                      | Reason                                         |
+| ---------------------------------------------------------- | ---------------------------------------------- |
+| `Ingress.spec.rules[].host`, `Ingress.spec.tls[].hosts[]`  | Hard API validation error (RFC 1123 subdomain) |
+| Traefik `IngressRoute` `Host()` matchers                   | Matched against the HTTP `Host` header         |
+| cert-manager `dnsNames`, external-dns hostname annotations | ACME identifiers and public DNS records        |
+
+Rule of thumb: a name the workload **dials** gets the dot; a name the cluster **answers to** does not.
+
 ## Pre-commit hooks
 
 Two stages — both run in CI (`pre-commit.yaml` workflow):
