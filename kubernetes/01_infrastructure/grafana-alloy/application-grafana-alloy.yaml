@@ -125,7 +125,7 @@ spec:
           collector: alloy-singleton
 
         # Streams pod logs from the Kubernetes API server — no DaemonSet needed.
-        podLogsViaKubernetesAPI:
+        podLogsViaKubernetesApi:
           enabled: true
           collector: alloy-singleton
 
@@ -146,6 +146,7 @@ spec:
           alloy-metrics:
             presets: [clustered, statefulset]
           alloy-singleton:
+            presets: [singleton]
             extraConfig: |
               remote.kubernetes.secret "mimir_rules_auth" {
                 name      = "grafana-cloud-credentials"
@@ -170,7 +171,7 @@ spec:
       selfHeal: true
     managedNamespaceMetadata:
       labels:
-        # alloy-singleton requires hostNetwork and hostPort — blocked by baseline
+        # node-exporter requires hostNetwork, hostPID, and hostPath mounts (/, /proc, /sys) — blocked by baseline
         pod-security.kubernetes.io/enforce: privileged
         pod-security.kubernetes.io/audit: privileged
         pod-security.kubernetes.io/warn: privileged
