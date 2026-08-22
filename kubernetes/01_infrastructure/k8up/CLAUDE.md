@@ -113,6 +113,23 @@ the rest is controller-runtime, workqueue, and Go runtime boilerplate. The chart
 also cannot be patched: Kustomize never runs over a Helm source, and giving it one would
 mean enabling `--enable-helm` in `argocd-cm` cluster-wide.
 
+### Why the ServiceMonitor sets `honorLabels: true`
+
+k8up's operator runs in `k8up` but emits metrics _about_ other namespaces, tagging each
+series with the namespace it backs up. A ServiceMonitor scrape attaches the target's own
+`namespace` label, and with the `honor_labels: false` default Prometheus keeps that and
+renames k8up's to `exported_namespace` — standard behaviour, but it makes
+`{{ $labels.namespace }}` in an alert render `k8up` instead of the namespace at risk.
+
+`honorLabels: true` lets k8up's label win, so `namespace` means "namespace being backed
+up" for both the k8up-derived and the kube-state-metrics-derived alerts in
+`prometheusrule-k8up.yaml`. k8up exposes only `namespace`, `jobType`, and `schedule`, so
+`namespace` is the sole collision — `job` and `instance` are unaffected.
+
+Note the neighbouring kube-state-metrics alerts need no such setting: the k8s-monitoring
+chart scrapes KSM through a bespoke job that attaches no target `namespace` at all, so
+nothing collides there. Only the ServiceMonitor path adds those labels.
+
 ### The backup metric gap
 
 `k8up_schedule_last_job_succeeded` emits series for `jobType=check` and `jobType=prune`

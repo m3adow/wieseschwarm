@@ -12,6 +12,8 @@ spec:
   endpoints:
     - port: http
       interval: 60s
+      # k8up reports on other namespaces: its own namespace label must win.
+      honorLabels: true
       metricRelabelings:
         # Endpoint exposes 708 series, only 24 of them k8up's own; the rest is
         # controller-runtime/Go boilerplate no rule or dashboard reads.
