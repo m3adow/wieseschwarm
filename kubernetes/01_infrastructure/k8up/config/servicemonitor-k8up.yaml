@@ -1,0 +1,20 @@
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: k8up
+  namespace: k8up
+spec:
+  # Required: kustomize's includeSelectors never rewrites CRD selector paths.
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: k8up
+  endpoints:
+    - port: http
+      interval: 60s
+      metricRelabelings:
+        # Endpoint exposes 708 series, only 24 of them k8up's own; the rest is
+        # controller-runtime/Go boilerplate no rule or dashboard reads.
+        - sourceLabels: [__name__]
+          regex: "k8up_.*"
+          action: keep

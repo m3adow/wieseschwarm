@@ -10,4 +10,5 @@ resources:
   - prometheusrule-cluster-node-exporter.yaml
   - prometheusrule-cluster-nodes.yaml
   - prometheusrule-cluster-pods.yaml
+  - prometheusrule-k8up.yaml
   - prometheusrule-series-budget.yaml
