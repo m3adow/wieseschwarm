@@ -92,3 +92,56 @@ resources:
 ```
 
 By default, k8up backs up every PVC in the namespace. To exclude a pod's volumes: annotate the pod with `k8up.io/backup: "false"`.
+
+## Monitoring and alerting
+
+`config/servicemonitor-k8up.yaml` scrapes the chart's `k8up-metrics` Service. Alert rules
+live with every other rule in
+`01_infrastructure/grafana-alloy/cluster-rules/prometheusrule-k8up.yaml`.
+
+**Why this Application is multi-source.** A Helm-source Application cannot carry a
+hand-written manifest, and the usual escape hatch — a separate `*-config` Application at
+wave N+1 — exists for config that consumes CRDs the parent chart installs. This
+ServiceMonitor consumes only `monitoring.coreos.com/v1` from `prometheus-operator-crds`
+(wave -4), so it has no ordering dependency on k8up at all and needs no second
+Application. `spec.sources` puts it in this Application instead. Renovate still bumps the
+chart: its `argocd` manager reads `spec.sources` as well as `spec.source`.
+
+**Why not `metrics.serviceMonitor.enabled: true`.** The chart's template exposes no
+`metricRelabelings`, and the endpoint serves 708 series of which only 24 are `k8up_*` —
+the rest is controller-runtime, workqueue, and Go runtime boilerplate. The chart's object
+also cannot be patched: Kustomize never runs over a Helm source, and giving it one would
+mean enabling `--enable-helm` in `argocd-cm` cluster-wide.
+
+### The backup metric gap
+
+`k8up_schedule_last_job_succeeded` emits series for `jobType=check` and `jobType=prune`
+**only** — never `backup`. This was verified empirically against a long-running operator
+with successful backups in the window, not inferred from the chart. Backup CRs do carry
+the `k8up.io/schedule-name` label that `operator/job/job.go` gates on, so the cause is
+upstream, not configuration.
+
+Consequently `K8upBackupStale` derives from kube-state-metrics job completion timestamps,
+selected via `kube_job_owner{owner_kind="Backup"}`. That owner kind is unique to k8up
+here — mariadb-operator's scheduled backup Jobs are owned by a `CronJob`, not its
+identically-named `Backup` CRD.
+
+| Alert                   | Signal                                     | Fires when              | Severity |
+| ----------------------- | ------------------------------------------ | ----------------------- | -------- |
+| `K8upBackupStale`       | KSM job completion, `owner_kind=Backup`    | no success in 36h       | critical |
+| `K8upCheckStale`        | KSM job completion, `owner_kind=Check`     | no success in 10d       | warning  |
+| `K8upBackupJobFailed`   | `k8up_jobs_failed_counter{jobType=backup}` | any failure in 6h       | critical |
+| `K8upScheduleJobFailed` | `k8up_schedule_last_job_succeeded == 0`    | last check/prune failed | warning  |
+| `K8upMetricsAbsent`     | `absent(k8up_schedules_gauge)`             | scrape or operator down | warning  |
+
+**Known blind spot:** the two staleness alerts key off retained Job objects.
+`successfulJobsHistoryLimit: 1` keeps exactly one successful Job per type, so the series
+persists and the alert keeps firing as intended. But a namespace whose Jobs are all
+deleted, or whose Schedule is removed outright, produces no series and therefore no
+alert. A Schedule made inert by omitting its job blocks (see the demo app) sits in this
+state deliberately and stays silent. Detecting a _never-ran_ backup needs the periodic
+restore drill, which does not exist yet.
+
+**Not covered by any of this:** whether a restore actually works. `check` runs plain
+`restic check` with no `--read-data`, so pack contents are never re-hashed, and no
+`Restore` has ever been run against these repositories.

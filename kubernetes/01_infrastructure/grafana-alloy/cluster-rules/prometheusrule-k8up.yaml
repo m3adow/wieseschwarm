@@ -1,0 +1,85 @@
+---
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: k8up
+  namespace: monitoring
+  labels:
+    app.kubernetes.io/part-of: grafana-alloy
+spec:
+  groups:
+    - name: k8up-backups
+      rules:
+        # Deadman, not a failure alert: k8up emits no k8up_schedule_last_job_succeeded
+        # series for jobType=backup, so job completion timestamps are the only signal.
+        - alert: K8upBackupStale
+          expr: |
+            (
+              time() - max by (namespace) (
+                kube_job_status_completion_time{job="integrations/kubernetes/kube-state-metrics"}
+                  * on (namespace, job_name) group_left ()
+                kube_job_owner{job="integrations/kubernetes/kube-state-metrics", owner_kind="Backup"}
+              )
+            ) > 129600
+          for: 30m
+          labels:
+            severity: critical
+          annotations:
+            summary: "K8up backup has not succeeded in over 36h."
+            description: >-
+              No K8up backup job in namespace {{ $labels.namespace }} has completed
+              successfully for {{ $value | humanizeDuration }}. Backups run daily, so
+              at least one run has been missed outright or is failing repeatedly.
+        - alert: K8upCheckStale
+          expr: |
+            (
+              time() - max by (namespace) (
+                kube_job_status_completion_time{job="integrations/kubernetes/kube-state-metrics"}
+                  * on (namespace, job_name) group_left ()
+                kube_job_owner{job="integrations/kubernetes/kube-state-metrics", owner_kind="Check"}
+              )
+            ) > 864000
+          for: 30m
+          labels:
+            severity: warning
+          annotations:
+            summary: "K8up repository check has not succeeded in over 10 days."
+            description: >-
+              No K8up check job in namespace {{ $labels.namespace }} has completed
+              successfully for {{ $value | humanizeDuration }}. Checks run weekly;
+              restic repository integrity is currently going unverified.
+        - alert: K8upBackupJobFailed
+          expr: |
+            increase(k8up_jobs_failed_counter{jobType="backup"}[6h]) > 0
+          for: 5m
+          labels:
+            severity: critical
+          annotations:
+            summary: "A K8up backup job failed."
+            description: >-
+              {{ $value | printf "%.0f" }} backup job(s) failed in namespace
+              {{ $labels.namespace }} within the last 6h.
+        - alert: K8upScheduleJobFailed
+          expr: |
+            k8up_schedule_last_job_succeeded == 0
+          for: 15m
+          labels:
+            severity: warning
+          annotations:
+            summary: "Most recent K8up job for a schedule failed."
+            description: >-
+              The last {{ $labels.jobType }} job triggered by schedule
+              {{ $labels.namespace }}/{{ $labels.schedule }} failed. This gauge covers
+              check and prune only; backup failures surface via K8upBackupJobFailed.
+        - alert: K8upMetricsAbsent
+          expr: |
+            absent(k8up_schedules_gauge)
+          for: 30m
+          labels:
+            severity: warning
+          annotations:
+            summary: "K8up metrics are no longer reaching Grafana Cloud."
+            description: >-
+              k8up_schedules_gauge has no series at all. Either the k8up operator is
+              down or its ServiceMonitor is no longer scraped. Every k8up_* alert is
+              blind while this fires.

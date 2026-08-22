@@ -74,6 +74,7 @@ There is no single mandatory pattern — use what fits:
 - **Helm operator + config app (most common):** Two Applications, separate waves. Use when the component installs CRDs or operators that config resources depend on.
 - **Config-only (no Helm):** A single Application pointing to a `kustomization.yaml`. Use for plain manifests with no chart.
 - **Single Helm app:** A single Application with inline values. Use for simple components with no custom CRs.
+- **Multi-source Helm app:** A single Application whose `spec.sources` lists the chart plus a git path of hand-written manifests. Use when a Helm component needs an extra manifest that does _not_ depend on that chart's own CRDs, so a separate config app at a later wave would buy nothing. `01_infrastructure/k8up` does this for its `ServiceMonitor`.
 
 Run `/add-infra-app` for a guided walkthrough.
 

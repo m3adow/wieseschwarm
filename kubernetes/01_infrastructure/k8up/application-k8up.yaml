@@ -11,15 +11,20 @@ metadata:
     - resources-finalizer.argocd.argoproj.io
 spec:
   project: default
-  source:
-    repoURL: https://k8up-io.github.io/k8up
-    chart: k8up
-    targetRevision: "4.10.x"
-    helm:
-      releaseName: k8up
-      values: |
-        k8up:
-          timezone: "Europe/Berlin"
+  sources:
+    - repoURL: https://k8up-io.github.io/k8up
+      chart: k8up
+      targetRevision: "4.10.x"
+      helm:
+        releaseName: k8up
+        values: |
+          k8up:
+            timezone: "Europe/Berlin"
+    # ServiceMonitor only needs the prometheus-operator CRDs (wave -4), not k8up's
+    # own, so it rides along here instead of in a separate config Application.
+    - repoURL: git@github.com:m3adow/wieseschwarm.git
+      targetRevision: main
+      path: kubernetes/01_infrastructure/k8up/config
   destination:
     server: https://kubernetes.default.svc
     namespace: k8up
