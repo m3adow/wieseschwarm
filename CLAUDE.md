@@ -149,13 +149,15 @@ Two dependencies are exempt from auto-merge at any update type:
 | `siderolabs/talos`                  | Merging changes only the declared installer tag. Nodes keep running the old version until a rolling upgrade via the `talos-upgrader` agent. |
 | `piraeusdatastore/piraeus-operator` | Replicated storage. CI never exercises DRBD, so green checks are not evidence the bump is safe.                                             |
 
-Three managers need explicit configuration because Renovate would otherwise miss them:
+Five things need explicit configuration because Renovate would otherwise miss them:
 
-| What                                | Manager              | Note                                                                                                                                                                                   |
-| ----------------------------------- | -------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `.pre-commit-config.yaml` hook revs | `pre-commit`         | Disabled by default in Renovate; enabled explicitly.                                                                                                                                   |
-| Piraeus operator manifest URL       | regex custom manager | A `releases/download/` asset URL is not a kustomize remote base.                                                                                                                       |
-| Talos Image Factory installer tag   | regex custom manager | `factory.talos.dev` serves no registry tag list, so the version is read from `siderolabs/talos` releases instead of the registry. Do not move `talos/` under the `kubernetes` manager. |
+| What                                        | Manager              | Note                                                                                                                                                                                   |
+| ------------------------------------------- | -------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `.pre-commit-config.yaml` hook revs         | `pre-commit`         | Disabled by default in Renovate; enabled explicitly.                                                                                                                                   |
+| kube-linter image in the local hook `entry` | regex custom manager | The pin lives inside a shell command string, not an image field.                                                                                                                       |
+| ArgoCD install manifest URL                 | regex custom manager | A `raw.githubusercontent.com` URL is not a kustomize remote base.                                                                                                                      |
+| Piraeus operator manifest URL               | regex custom manager | A `releases/download/` asset URL is not a kustomize remote base.                                                                                                                       |
+| Talos Image Factory installer tag           | regex custom manager | `factory.talos.dev` serves no registry tag list, so the version is read from `siderolabs/talos` releases instead of the registry. Do not move `talos/` under the `kubernetes` manager. |
 
 Kubernetes control-plane versions live in the gitignored `talos/secret/controlplane.yaml` and are therefore invisible to Renovate. They are upgraded manually via the `talos-k8s-upgrader` agent.
 
