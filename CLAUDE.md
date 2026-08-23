@@ -95,6 +95,10 @@ kube-linter runs as a `local` hook with a customized `entry` pinning the
 `stackrox/kube-linter` docker image (the upstream `kube-linter-docker` hook
 hardcodes a stale image tag). Renovate bumps the pin via a regex manager.
 
+The prettier hook uses `rbubley/mirrors-prettier`, the maintained fork of the
+archived `pre-commit/mirrors-prettier`. Renovate has no replacement preset for
+that migration, so the repo URL is pinned by hand; only the rev is tracked.
+
 ## SOPS encryption
 
 `.sops.yaml` controls what gets encrypted. Most manifests encrypt only `data`/`stringData` fields; `values.yaml` and `talos/secret/` files are fully encrypted. Never commit unencrypted secrets — the `forbid-secrets` hook catches most cases.
@@ -137,5 +141,22 @@ Two agents in `.claude/agents/`:
 ## Renovate
 
 `renovate.json` auto-bumps Helm chart versions in Application specs. Minor and patch updates (`packageRules` automerge entry) are auto-merged via GitHub's native auto-merge once required status checks pass — this includes Helm chart bumps, so a passing CI run does not guarantee wave-ordering or values compatibility was considered. Major updates still open as regular PRs requiring manual review and merge.
+
+Two dependencies are exempt from auto-merge at any update type:
+
+| Dependency                          | Why                                                                                                                                         |
+| ----------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
+| `siderolabs/talos`                  | Merging changes only the declared installer tag. Nodes keep running the old version until a rolling upgrade via the `talos-upgrader` agent. |
+| `piraeusdatastore/piraeus-operator` | Replicated storage. CI never exercises DRBD, so green checks are not evidence the bump is safe.                                             |
+
+Three managers need explicit configuration because Renovate would otherwise miss them:
+
+| What                                | Manager              | Note                                                                                                                                                                                   |
+| ----------------------------------- | -------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `.pre-commit-config.yaml` hook revs | `pre-commit`         | Disabled by default in Renovate; enabled explicitly.                                                                                                                                   |
+| Piraeus operator manifest URL       | regex custom manager | A `releases/download/` asset URL is not a kustomize remote base.                                                                                                                       |
+| Talos Image Factory installer tag   | regex custom manager | `factory.talos.dev` serves no registry tag list, so the version is read from `siderolabs/talos` releases instead of the registry. Do not move `talos/` under the `kubernetes` manager. |
+
+Kubernetes control-plane versions live in the gitignored `talos/secret/controlplane.yaml` and are therefore invisible to Renovate. They are upgraded manually via the `talos-k8s-upgrader` agent.
 
 Auto-merge depends on repo-level settings that aren't visible in this tree: `allow_auto_merge` is enabled on the repo, and branch protection on `main` requires the `checks` and `pre-commit` status checks before any merge (including auto-merge).
