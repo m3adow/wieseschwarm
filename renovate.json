@@ -64,6 +64,23 @@
       "automergeType": "pr",
       "platformAutomerge": true,
       "automergeStrategy": "merge-commit"
+    },
+    {
+      "description": "Talos: merging the pin does not upgrade the nodes, so never auto-merge",
+      "matchDepNames": ["siderolabs/talos"],
+      "automerge": false,
+      "prBodyNotes": [
+        "Merging this PR only changes the declared installer tag. The nodes keep running the old version until a rolling upgrade is performed with the `talos-upgrader` agent.",
+        "Full changelog: https://github.com/siderolabs/talos/releases"
+      ]
+    },
+    {
+      "description": "Piraeus: replicated storage, never upgrade unattended",
+      "matchDepNames": ["piraeusdatastore/piraeus-operator"],
+      "automerge": false,
+      "prBodyNotes": [
+        "Full changelog: https://github.com/piraeusdatastore/piraeus-operator/releases"
+      ]
     }
   ]
 }
