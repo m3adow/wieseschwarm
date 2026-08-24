@@ -66,7 +66,7 @@ You NEVER skip phases. You NEVER proceed to the next phase without completing th
   - Check that the upgrade command syntax is correct for each node type
 - Produce a clear upgrade plan table showing:
   | Node | Role | Current Version | Target Version | Installer Image | Extensions | Status |
-  |------|------|----------------|----------------|-----------------|------------|--------|
+  | ---- | ---- | --------------- | -------------- | --------------- | ---------- | ------ |
 - Highlight any warnings, incompatibilities, or manual steps required.
 - Explicitly list what will NOT change (Kubernetes version, machine config content, application workloads) to set clear expectations.
 

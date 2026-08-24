@@ -1,6 +1,9 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
   "extends": ["config:recommended", ":semanticCommitsDisabled"],
+  "pre-commit": {
+    "enabled": true
+  },
   "argocd": {
     "managerFilePatterns": ["/^kubernetes/.+\\.yaml$/"]
   },
@@ -29,6 +32,28 @@
       ],
       "depNameTemplate": "argoproj/argo-cd",
       "datasourceTemplate": "github-releases"
+    },
+    {
+      "customType": "regex",
+      "description": "Piraeus operator manifest pinned in the piraeus kustomization",
+      "managerFilePatterns": [
+        "/^kubernetes/01_infrastructure/piraeus/kustomization\\.yaml$/"
+      ],
+      "matchStrings": [
+        "https://github\\.com/piraeusdatastore/piraeus-operator/releases/download/(?<currentValue>v[\\d.]+)/manifest\\.yaml"
+      ],
+      "depNameTemplate": "piraeusdatastore/piraeus-operator",
+      "datasourceTemplate": "github-releases"
+    },
+    {
+      "customType": "regex",
+      "description": "Talos Image Factory installer tag; factory.talos.dev serves no registry tag list, so the version is tracked from siderolabs/talos releases",
+      "managerFilePatterns": ["/^talos/.+\\.yaml$/"],
+      "matchStrings": [
+        "image: factory\\.talos\\.dev/[^:\\s]+:(?<currentValue>v[\\d.]+)"
+      ],
+      "depNameTemplate": "siderolabs/talos",
+      "datasourceTemplate": "github-releases"
     }
   ],
   "packageRules": [
@@ -39,6 +64,23 @@
       "automergeType": "pr",
       "platformAutomerge": true,
       "automergeStrategy": "merge-commit"
+    },
+    {
+      "description": "Talos: merging the pin does not upgrade the nodes, so never auto-merge",
+      "matchDepNames": ["siderolabs/talos"],
+      "automerge": false,
+      "prBodyNotes": [
+        "Merging this PR only changes the declared installer tag. The nodes keep running the old version until a rolling upgrade is performed with the `talos-upgrader` agent.",
+        "Full changelog: https://github.com/siderolabs/talos/releases"
+      ]
+    },
+    {
+      "description": "Piraeus: replicated storage, never upgrade unattended",
+      "matchDepNames": ["piraeusdatastore/piraeus-operator"],
+      "automerge": false,
+      "prBodyNotes": [
+        "Full changelog: https://github.com/piraeusdatastore/piraeus-operator/releases"
+      ]
     }
   ]
 }
