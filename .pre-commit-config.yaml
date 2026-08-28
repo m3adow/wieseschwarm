@@ -31,7 +31,7 @@ repos:
     hooks:
       - id: forbid-secrets
   - repo: https://github.com/renovatebot/pre-commit-hooks
-    rev: 44.48.3
+    rev: 44.49.1
     hooks:
       - id: renovate-config-validator
         args: [--strict]
