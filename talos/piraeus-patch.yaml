@@ -5,7 +5,7 @@
 # See: https://piraeus.io/docs/v2.10.3/how-to/talos/
 machine:
   install:
-    image: factory.talos.dev/metal-installer/e048aaf4461ff9f9576c9a42f760f2fef566559bd4933f322853ac291e46f238:v1.13.3
+    image: factory.talos.dev/metal-installer/e048aaf4461ff9f9576c9a42f760f2fef566559bd4933f322853ac291e46f238:v1.14.0
   kernel:
     modules:
       - name: drbd
