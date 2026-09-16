@@ -16,7 +16,7 @@ repos:
       - id: forbid-tabs
       - id: remove-tabs
   - repo: https://github.com/rbubley/mirrors-prettier
-    rev: v3.9.6
+    rev: v3.9.7
     hooks:
       - id: prettier
   - repo: https://github.com/adrienverge/yamllint
