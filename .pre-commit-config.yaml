@@ -37,7 +37,7 @@ repos:
         args: [--strict]
   ### Pre-Push Hooks
   - repo: https://github.com/Agilicus/pre-commit-hook-k8svalidate.git
-    rev: v0.2.0
+    rev: v0.2.1
     hooks:
       - id: k8svalidate
         args: [--exclude, "**/*-patch.yaml"]
