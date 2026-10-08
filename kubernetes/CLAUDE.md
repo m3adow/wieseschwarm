@@ -221,7 +221,7 @@ spec:
     secretName: <app>-public-tls # cert-manager Certificate, letsencrypt-production issuer
 ```
 
-external-dns (wave 3, `sources: [traefik-proxy]`) sees the IngressRoute and creates a proxied CNAME for the host pointing at the tunnel. Removing the IngressRoute removes the DNS record (`policy: sync`).
+external-dns (wave -1, `sources: [traefik-proxy]`) sees the IngressRoute and creates a proxied CNAME for the host pointing at the tunnel. Removing the IngressRoute removes the DNS record (`policy: sync`).
 
 **Constraints:**
 
