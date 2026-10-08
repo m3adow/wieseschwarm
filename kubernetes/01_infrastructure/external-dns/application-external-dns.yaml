@@ -34,6 +34,14 @@ spec:
           - wieseclan.eu.org
         extraArgs:
           - --cloudflare-proxied
+        serviceMonitor:
+          enabled: true
+          # Series budget: keep only what ExternalDNSNoEndpoints reads, the endpoint
+          # serves 82 series.
+          metricRelabelings:
+            - sourceLabels: [__name__]
+              regex: "external_dns_(source|registry)_endpoints_total"
+              action: keep
   destination:
     server: https://kubernetes.default.svc
     namespace: external-dns

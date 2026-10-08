@@ -207,7 +207,7 @@ metadata:
   name: <app>-public
   namespace: <namespace>
   annotations:
-    external-dns.alpha.kubernetes.io/target: "0c7f5b3b-6179-4d8a-beff-954e8e87e37c.cfargotunnel.com"
+    external-dns.kubernetes.io/target: "0c7f5b3b-6179-4d8a-beff-954e8e87e37c.cfargotunnel.com"
 spec:
   entryPoints:
     - websecure
@@ -221,13 +221,14 @@ spec:
     secretName: <app>-public-tls # cert-manager Certificate, letsencrypt-production issuer
 ```
 
-external-dns (wave 3, `sources: [traefik-proxy]`) sees the IngressRoute and creates a proxied CNAME for the host pointing at the tunnel. Removing the IngressRoute removes the DNS record (`policy: sync`).
+external-dns (wave -1, `sources: [traefik-proxy]`) sees the IngressRoute and creates a proxied CNAME for the host pointing at the tunnel. Removing the IngressRoute removes the DNS record (`policy: sync`).
 
 **Constraints:**
 
 - Only first-level subdomains (`<app>.wieseclan.eu.org`): Cloudflare Universal SSL (Free plan) does not cover deeper levels (`a.b.wieseclan.eu.org`).
 - Any DNS record pointing at the tunnel reaches Traefik; the IngressRoute set is the real exposure gate (no matching route → 404).
-- If the tunnel is ever recreated: update the tunnel token SopsSecret, the table above, and every `external-dns.alpha.kubernetes.io/target` annotation (grep for `cfargotunnel.com`). Leave the new tunnel's dashboard routes empty so the git-managed ConfigMap stays authoritative.
+- external-dns reads only the `external-dns.kubernetes.io/` annotation prefix (default since v0.22). The old `external-dns.alpha.kubernetes.io/` prefix is silently ignored, and a Traefik IngressRoute without an explicit `target` annotation yields no DNS record. With `policy: sync`, external-dns then deletes the records it owns, so a dropped annotation takes the hostname offline without any error.
+- If the tunnel is ever recreated: update the tunnel token SopsSecret, the table above, and every `external-dns.kubernetes.io/target` annotation (grep for `cfargotunnel.com`). Leave the new tunnel's dashboard routes empty so the git-managed ConfigMap stays authoritative.
 - Reloader restarts the cloudflared pods when the ConfigMap changes; routing edits in git go live on the next ArgoCD sync without manual action.
 
 ## Database provisioning (native MariaDB CRDs)

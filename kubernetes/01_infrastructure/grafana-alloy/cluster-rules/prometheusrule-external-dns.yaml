@@ -1,0 +1,40 @@
+---
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: external-dns
+  namespace: monitoring
+  labels:
+    app.kubernetes.io/part-of: grafana-alloy
+spec:
+  groups:
+    - name: external-dns
+      rules:
+        # Silent failure: when annotations stop being read, external-dns reports 0
+        # endpoints and 0 errors, then deletes the records it owns (policy: sync).
+        - alert: ExternalDNSNoEndpoints
+          expr: |
+            external_dns_source_endpoints_total == 0
+          for: 15m
+          labels:
+            severity: critical
+          annotations:
+            summary: "external-dns sees no endpoints, public hostnames lose their DNS records."
+            description: >-
+              external-dns has found no DNS endpoints in any IngressRoute for
+              {{ $value | humanizeDuration }}, so with policy sync it deletes every record
+              it owns. Check that the public IngressRoutes carry the
+              external-dns.kubernetes.io/target annotation. This also fires if no public
+              IngressRoute exists at all.
+        - alert: ExternalDNSMetricsAbsent
+          expr: |
+            absent(external_dns_source_endpoints_total)
+          for: 30m
+          labels:
+            severity: warning
+          annotations:
+            summary: "external-dns metrics are no longer reaching Grafana Cloud."
+            description: >-
+              external_dns_source_endpoints_total has no series at all. Either external-dns
+              is down or its ServiceMonitor is no longer scraped. ExternalDNSNoEndpoints is
+              blind while this fires.
