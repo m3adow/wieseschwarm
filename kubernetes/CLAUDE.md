@@ -349,6 +349,19 @@ Combine with `runAsNonRoot: true` in `securityContext` for defense in depth: use
 protect against container-escape exploits; `runAsNonRoot` prevents privilege escalation inside
 the container.
 
+**Verified on this cluster (2026-10-15):** `hostUsers: false` works on all three nodes, including
+pods that mount `piraeus-replicated` volumes, on nodes with and without a local replica. The nodes
+have no `/etc/subuid` or `/etc/subgid`, and the kubelet does not need them; the requirement is the
+`user.max_user_namespaces` sysctl described in `talos/CLAUDE.md`.
+
+Volume mounts are ID-mapped: a file written as uid N inside the pod is stored as uid N on disk,
+exactly as without a user namespace. Two consequences:
+
+- Existing data keeps working when a workload switches to or from `hostUsers: false`. No `chown`
+  is needed for the switch.
+- A process running as root inside the pod creates root-owned files on the volume, although it is
+  unprivileged on the host. Keep setting `runAsNonRoot: true`.
+
 ### RecursiveReadOnlyMounts
 
 Makes `readOnly: true` volume mounts kernel-recursively read-only (sets `MS_REC` on the bind
