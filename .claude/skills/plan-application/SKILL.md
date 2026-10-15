@@ -35,7 +35,7 @@ Every available infra-application must be considered — decide include/exclude 
 | LAN ingress           | Any HTTP-serving app                         | `ingressroute-<app>-lan.yaml`                                                                                                      | `demo/ingressroute-demo-lan.yaml`                                                            |
 | Public ingress + cert | Only if Step 2.2 = public                    | `certificate-<app>-public.yaml`, `ingressroute-<app>-public.yaml` with the `external-dns.kubernetes.io/target` annotation          | `demo/ingressroute-demo-public.yaml`, "Public exposure" in `kubernetes/CLAUDE.md`            |
 | Reloader              | App reads a ConfigMap/Secret that can change | `configmap.reloader.stakater.com/reload` / `secret.reloader.stakater.com/reload` annotations on the pod template                   | `kubernetes/CLAUDE.md` "Reloader"                                                            |
-| Security baseline     | Always                                       | non-root `securityContext`, `hostUsers: false`, `readOnlyRootFilesystem: true` + `emptyDir` mounts for writable paths              | `kubernetes/CLAUDE.md` "Non-root workloads"                                                  |
+| Security baseline     | Always                                       | non-root `securityContext`, `hostUsers: false`, `readOnlyRootFilesystem: true` + `emptyDir` mounts for writable paths              | `kubernetes/CLAUDE.md` "Non-root workloads" and "UserNamespacesSupport" (verified with PVCs) |
 
 ### Metrics caveat
 
