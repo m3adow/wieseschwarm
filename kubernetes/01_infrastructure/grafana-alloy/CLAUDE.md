@@ -3,7 +3,7 @@
 Deploys the `k8s-monitoring` Helm chart (Alloy) to push metrics/events/logs to Grafana
 Cloud, plus a separate `grafana-alloy-rules` Application syncing `PrometheusRule` CRDs
 from `cluster-rules/` to Grafana Cloud's Mimir ruler via Alloy's
-`mimir.rules.kubernetes` component. Rule evaluation happens server-side in Mimir, not
+`mimir.rules.kubernetes` component (LogQL rules go to the Loki ruler instead, see below). Rule evaluation happens server-side in Mimir, not
 in-cluster — alerts keep firing/resolving correctly even during a full cluster outage.
 
 ## What's git-managed vs. manual
@@ -19,6 +19,29 @@ CRD this cluster's ArgoCD can sync. The config also embeds the Telegram bot toke
 plaintext, so it could not be committed as-is anyway. Grafana Cloud has a Terraform
 provider that could manage this declaratively, but adopting it for one receiver would add
 a second IaC tool/state store to a repo that's otherwise pure Kustomize+ArgoCD.
+
+## Two rule paths: metrics (Mimir) and logs (Loki)
+
+Alloy syncs `PrometheusRule` CRDs to two rulers, split by one label:
+
+| Rule language | `PrometheusRule` label | Alloy component          | Ruler                              |
+| ------------- | ---------------------- | ------------------------ | ---------------------------------- |
+| PromQL        | none (default)         | `mimir.rules.kubernetes` | Mimir (`prometheus-prod-65-...`)   |
+| LogQL         | `ruler: loki`          | `loki.rules.kubernetes`  | Loki (`logs-prod-012.grafana.net`) |
+
+The Mimir component excludes `ruler: loki` with a `NotIn` match expression, and the Loki
+component selects only it. Both sides are needed: Mimir rejects LogQL it cannot parse,
+and Loki would reject PromQL. A rule without the label goes to Mimir, as every rule did
+before the Loki path existed.
+
+Use a LogQL rule only for a signal that exists solely in logs (for example a job's
+summary line with no matching metric). Set the group's `interval` to the resolution the
+signal needs: the Loki ruler re-reads the whole range window on every evaluation.
+
+**Not yet verified (2026-10-15):** that the Grafana Cloud Loki ruler hands its alerts to
+the same Cloud Alertmanager as the Mimir ruler, and that the shared token may write Loki
+rules. `cluster-rules/prometheusrule-loki-ruler-test.yaml` is a temporary always-firing
+rule that answers both. Remove it, and this paragraph, once its notification arrives.
 
 ## Two Alertmanagers, only one of which matters
 

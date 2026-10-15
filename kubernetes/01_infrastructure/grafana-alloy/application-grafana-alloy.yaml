@@ -160,6 +160,27 @@ spec:
                   username = convert.nonsensitive(remote.kubernetes.secret.mimir_rules_auth.data["username-prometheus"])
                   password = remote.kubernetes.secret.mimir_rules_auth.data["password"]
                 }
+                // LogQL rules go to the Loki ruler below; Mimir cannot parse them.
+                rule_selector {
+                  match_expression {
+                    key      = "ruler"
+                    operator = "NotIn"
+                    values   = ["loki"]
+                  }
+                }
+              }
+
+              loki.rules.kubernetes "sync" {
+                address = "https://logs-prod-012.grafana.net"
+                basic_auth {
+                  username = convert.nonsensitive(remote.kubernetes.secret.mimir_rules_auth.data["username-loki"])
+                  password = remote.kubernetes.secret.mimir_rules_auth.data["password"]
+                }
+                rule_selector {
+                  match_labels = {
+                    ruler = "loki",
+                  }
+                }
               }
 
   destination:
