@@ -31,6 +31,33 @@ Two properties of the root app are load-bearing. Change either only deliberately
 
 Because `selfHeal` is on, a `kubectl edit` of the root is reverted within ~3 minutes. To recover from a bad commit to its own spec, remove `spec.syncPolicy.automated` first — nothing re-adds it — then fix the object and restore the block. `make argocd-apps-bootstrap` remains the way to apply the file by hand on a fresh cluster.
 
+### Hook finalizers on child Applications
+
+The root's `spec.ignoreDifferences` hides two families of finalizers on the child Applications it manages: `pre-delete-finalizer.argocd.argoproj.io` and `post-delete-finalizer.argocd.argoproj.io`, each with a `/cleanup` variant. Without the rule the root stays `OutOfSync`/`Progressing` forever and self-heal re-syncs it every ~5 minutes.
+
+**Where they come from.** Argo CD treats a Helm `pre-delete` or `post-delete` hook as its own `PreDelete`/`PostDelete` hook. On every reconcile, the application controller adds the matching finalizer pair to any Application whose rendered manifests contain such a hook, so that deleting the Application waits for the hook to run (and removes the pair again once the hook is gone). Two charts currently ship one:
+
+| Application     | Chart template                                                              | What the delete hook does                                                                                                                                                                                                                    |
+| --------------- | --------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `k8up`          | `templates/cleanup-hook.yaml` (`post-delete`)                               | Deletes the `pod-executor` Role and RoleBinding k8up creates in every namespace. The chart has no value to disable it.                                                                                                                       |
+| `grafana-alloy` | `templates/hooks/pre-delete_remove-alloy-and-finalizer.yaml` (`pre-delete`) | Deletes the `Alloy` instances, then removes the finalizer that a post-install hook puts on the alloy-operator Deployment. Keeps uninstalls from leaving stuck `Alloy` objects; on by default (`alloy-operator.waitForAlloyRemoval.enabled`). |
+
+**Why they fight with the root.** Git declares only `resources-finalizer.argocd.argoproj.io`. The root syncs with client-side apply, and because `Application` is a CRD the apply is a JSON merge patch, which replaces the whole `finalizers` list. Each root sync therefore strips the hook finalizers (`application.argoproj.io/<name> configured`), the controller re-adds them a few seconds later, and the root flips back to `OutOfSync`. This is unrelated to the `ServerSideApply`/`ServerSideDiff` settings on `k8up` or to it being multi-source: an Application's own sync options govern how _it_ applies its resources, not how the root applies the Application object.
+
+**What the rule does and does not do.** The jq expression drops only the hook finalizers from both sides of the diff, so drift on `resources-finalizer` (the one that cascades deletion) is still detected and self-healed. It does not change what a sync writes: every root sync, 3-4 a day when Renovate merges, still strips the hook finalizers for about two seconds. Deleting `k8up` or `grafana-alloy` in that window would skip its delete hook. That is accepted; the root does not prune, so such deletions are manual anyway.
+
+**Alternatives rejected** (evaluated against Argo CD v3.5.5):
+
+- Ignoring all of `/metadata/finalizers` plus `RespectIgnoreDifferences=true` would stop the stripping, but it hides and never corrects `resources-finalizer` drift on every child Application, and it routes all root syncs through `normalizeTargetResources`. Pairing `RespectIgnoreDifferences` with the jq rule above does not help: `restoreNonIgnoredFields` sees the list as non-ignored and puts the git value back.
+- `ServerSideApply=true` and `ServerSideDiff=true` on the root would make each finalizer entry separately owned, but the live Applications carry leftover field owners (`argocd-controller` client-side, `kubectl-patch`, `argocd-server`). Fields still co-owned by them would silently stay live after being removed from git. See also "ArgoCD syncOptions" below.
+- Disabling the hooks in the charts is not possible for k8up and would cost grafana-alloy its clean uninstall.
+
+**When adding an app.** Any new infrastructure chart with a delete hook is covered automatically. The `applications` Application (the submodule) does not have this rule; if a submodule app ever ships a delete hook, add the same `ignoreDifferences` entry there. Check which Applications carry hook finalizers with:
+
+```bash
+kubectl -n argocd get applications -o custom-columns=NAME:.metadata.name,FINALIZERS:.metadata.finalizers
+```
+
 ## ArgoCD bootstrap procedure
 
 Run once on a fresh cluster, in order:

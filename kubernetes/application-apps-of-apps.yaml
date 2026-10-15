@@ -18,6 +18,13 @@ spec:
   destination:
     server: https://kubernetes.default.svc
     namespace: argocd
+  # Argo CD adds these to child Applications whose charts ship delete hooks; git
+  # cannot declare them. See "Hook finalizers on child Applications" in kubernetes/CLAUDE.md.
+  ignoreDifferences:
+    - group: argoproj.io
+      kind: Application
+      jqPathExpressions:
+        - '.metadata.finalizers[] | select(startswith("pre-delete-finalizer.argocd.argoproj.io") or startswith("post-delete-finalizer.argocd.argoproj.io"))'
   syncPolicy:
     automated:
       enabled: true
