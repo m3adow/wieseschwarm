@@ -38,10 +38,21 @@ Use a LogQL rule only for a signal that exists solely in logs (for example a job
 summary line with no matching metric). Set the group's `interval` to the resolution the
 signal needs: the Loki ruler re-reads the whole range window on every evaluation.
 
-**Not yet verified (2026-10-15):** that the Grafana Cloud Loki ruler hands its alerts to
-the same Cloud Alertmanager as the Mimir ruler, and that the shared token may write Loki
-rules. `cluster-rules/prometheusrule-loki-ruler-test.yaml` is a temporary always-firing
-rule that answers both. Remove it, and this paragraph, once its notification arrives.
+**Verified end to end (2026-10-15)** with a temporary always-firing LogQL rule: the shared
+`grafana-cloud-credentials` token may write Loki rules, the Loki ruler at the push hostname
+accepts them, and it hands firing alerts to the **same Cloud Alertmanager** as the Mimir
+ruler, so they reach Telegram through the existing routing. Mimir's rule count was
+unchanged by the `NotIn` exclusion.
+
+Two rules for LogQL rules:
+
+- **Omit `for`.** Loki does not store `for: 0m`, so the copy Alloy reads back never matches
+  the CRD, and `loki.rules.kubernetes` re-uploads the group on every `sync_interval`
+  (30 s; visible as repeated `updated rule group` log lines).
+- **The Alloy selectors must be live before the first `ruler: loki` rule.** When both arrive
+  in one sync, `grafana-alloy-rules` can create the rule before Alloy reloads, and the old
+  Mimir component (then still selecting everything) uploads it to Mimir, which rejects
+  LogQL that is not also valid PromQL. Only the first introduction of the path is exposed.
 
 ## Two Alertmanagers, only one of which matters
 

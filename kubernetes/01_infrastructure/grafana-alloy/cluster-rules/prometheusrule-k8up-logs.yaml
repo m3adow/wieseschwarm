@@ -1,0 +1,34 @@
+---
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: k8up-logs
+  namespace: monitoring
+  labels:
+    app.kubernetes.io/part-of: grafana-alloy
+    ruler: loki
+spec:
+  groups:
+    - name: k8up-backup-logs
+      interval: 15m
+      rules:
+        # LogQL: restic's per-run error count exists only in the job log. No `for`: Loki drops
+        # `for: 0m`, and the stored copy then never matches, so Alloy re-uploads every 30s.
+        - alert: K8upBackupSkippedFiles
+          expr: |
+            max by (namespace) (last_over_time(
+              {container="backup", job=~".+/backup"}
+                |= "backup finished" |= `"errors":`
+                | regexp `"errors": (?P<errors>\d+)`
+                | drop instance, pod, service_instance_id, detected_level
+                | unwrap errors | __error__="" [26h]
+            )) > 0
+          labels:
+            severity: warning
+          annotations:
+            summary: "k8up backup in {{ $labels.namespace }} skipped files"
+            description: >-
+              The latest backup in {{ $labels.namespace }} finished with {{ $value }} restic
+              error(s): files it could not read are missing from the snapshot, although the
+              Job reports success. Check the backup pod log for "during archival" lines and
+              the Schedule's backup.podSecurityContext.
