@@ -104,9 +104,15 @@ The alternatives are worse:
 
 An application whose pods write as more than one uid needs a backup identity that can read all of
 them; check the `backup finished` line for `"errors": 0` after the first run. Set the same
-`podSecurityContext` on any one-off `Backup` or `Restore` object, so restored files come back owned
-by the application. Use the full resource name `backups.k8up.io` with `kubectl`: the short name
-`backups` resolves to mariadb-operator's `Backup` type on this cluster.
+`podSecurityContext` on any one-off `Backup`. A `Restore` gets the same `runAsUser`/`runAsGroup`, so
+restored files come back owned by the application, **plus `fsGroup` set to the application's gid**
+whenever it restores into a fresh volume. A new volume's root directory belongs to root, so a
+restore pod running as the application's uid cannot create anything in it: restic logs
+`mkdir … permission denied` for every path and ends with `Fatal: There were N errors`, yet the
+`Restore` still reports `Completed=True` (verified 2026-10-15). Check the job log's
+`Summary: Restored N files/dirs` line, never only the status. Use the full resource names
+`backups.k8up.io` and `restores.k8up.io` with `kubectl`: the short name `backups` resolves to
+mariadb-operator's `Backup` type on this cluster.
 
 **Add both to the application's `kustomization.yaml`:**
 
@@ -194,5 +200,7 @@ because k8up pushes its restic statistics to a Pushgateway that does not exist h
 removes the known cause; the job log's `backup finished` line is the only place to confirm it.
 
 **Not covered by any of this:** whether a restore actually works. `check` runs plain
-`restic check` with no `--read-data`, so pack contents are never re-hashed, and no
-`Restore` has ever been run against these repositories.
+`restic check` with no `--read-data`, so pack contents are never re-hashed. One manual restore
+test has been run (2026-10-15, one application): a fresh snapshot of the volume and of an
+application-aware database dump, restored into a scratch volume, passed the application's own
+integrity checks. There is still no periodic restore drill.
