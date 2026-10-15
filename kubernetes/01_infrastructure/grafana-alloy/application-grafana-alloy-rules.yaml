@@ -12,7 +12,7 @@ spec:
   project: default
   source:
     repoURL: git@github.com:m3adow/wieseschwarm.git
-    targetRevision: feature/k8up-loki-backup-alert
+    targetRevision: main
     path: kubernetes/01_infrastructure/grafana-alloy/cluster-rules
   destination:
     server: https://kubernetes.default.svc
