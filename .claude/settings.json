@@ -46,7 +46,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash .claude/hooks/block-main-push.sh",
+            "command": "python3 -I \"$CLAUDE_PROJECT_DIR/.claude/hooks/block_main_push.py\"",
             "timeout": 15
           }
         ]
