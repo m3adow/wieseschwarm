@@ -46,9 +46,11 @@ unchanged by the `NotIn` exclusion.
 
 Two rules for LogQL rules:
 
-- **Omit `for`.** Loki does not store `for: 0m`, so the copy Alloy reads back never matches
-  the CRD, and `loki.rules.kubernetes` re-uploads the group on every `sync_interval`
-  (30 s; visible as repeated `updated rule group` log lines).
+- **Write `expr: |-`, not `expr: |`.** Loki stores the expression without a trailing
+  newline, so with `|` the copy Alloy reads back never matches the CRD, and
+  `loki.rules.kubernetes` re-uploads the group on every `sync_interval` (30 s; visible as
+  repeated `updated rule group` log lines). Verified: switching to `|-` stopped the
+  uploads. Mimir rules keep `|`; that component does not show the problem.
 - **The Alloy selectors must be live before the first `ruler: loki` rule.** When both arrive
   in one sync, `grafana-alloy-rules` can create the rule before Alloy reloads, and the old
   Mimir component (then still selecting everything) uploads it to Mimir, which rejects
