@@ -127,8 +127,10 @@ Each backed-up namespace uses its own dedicated B2 Application Key (scoped to th
 
 Each namespace that contains PVCs to back up needs two files:
 
-- `sopssecret-k8up-b2.yaml` — SopsSecret (encrypted) with the dedicated B2 Application Key ID, Application Key, and restic repo password; decrypts to a Secret named `k8up-b2`
-- `schedule.yaml` — k8up Schedule using the native `b2` backend referencing `k8up-b2` (do not use the `s3` backend against B2)
+- `sopssecret-<app>-k8up-b2.yaml` — SopsSecret (encrypted) with the dedicated B2 Application Key ID, Application Key, and restic repo password; decrypts to a Secret named `k8up-b2`
+- `schedule-<app>-k8up.yaml` — k8up Schedule using the native `b2` backend referencing `k8up-b2` (do not use the `s3` backend against B2)
+
+The Schedule's `backup.podSecurityContext` must run the backup pod as the application's own uid and gid. With k8up's default uid 65532, restic silently skips every file that is not world-readable while the Job still reports success. Details and the reasoning are in `kubernetes/01_infrastructure/k8up/CLAUDE.md`.
 
 Full YAML templates are in `kubernetes/01_infrastructure/k8up/CLAUDE.md`.
 

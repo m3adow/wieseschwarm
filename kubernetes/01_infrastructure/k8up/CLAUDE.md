@@ -22,7 +22,7 @@ Each application namespace uses its own dedicated B2 Application Key and its own
 2. Note the Key ID and Application Key (shown once). The `b2` backend talks to the B2 native API directly — no S3 endpoint is needed.
 3. Generate a unique restic repo password: `openssl rand -base64 32`. Store it safely — backups cannot be restored without it. Do not reuse the same password across namespaces.
 
-**Per namespace: create `sopssecret-k8up-b2.yaml`**
+**Per namespace: create `sopssecret-<app>-k8up-b2.yaml`**
 
 Create unencrypted, then run `sops -e -i`:
 
@@ -31,7 +31,7 @@ Create unencrypted, then run `sops -e -i`:
 apiVersion: isindir.github.com/v1alpha3
 kind: SopsSecret
 metadata:
-  name: k8up-b2-sops
+  name: <app>-k8up-b2-sops
   namespace: <target-namespace>
 spec:
   secretTemplates:
@@ -42,14 +42,14 @@ spec:
         account-key: <b2-application-key>
 ```
 
-**Per namespace: create `schedule.yaml`**
+**Per namespace: create `schedule-<app>-k8up.yaml`**
 
 ```yaml
 ---
 apiVersion: k8up.io/v1
 kind: Schedule
 metadata:
-  name: k8up-schedule
+  name: <app>-k8up-schedule
   namespace: <target-namespace>
 spec:
   backend:
@@ -71,6 +71,10 @@ spec:
     schedule: "0 2 * * *"
     failedJobsHistoryLimit: 3
     successfulJobsHistoryLimit: 1
+    # Read as the app's own uid: k8up's default uid 65532 skips files that are not world-readable.
+    podSecurityContext:
+      runAsUser: <app-uid>
+      runAsGroup: <app-gid>
   prune:
     schedule: "0 3 * * 0"
     retention:
@@ -83,13 +87,38 @@ spec:
 
 `backup` nightly 02:00, `prune` Sunday 03:00 (enforces retention), `check` Monday 04:00 (repo integrity).
 
+**`backup.podSecurityContext` is required.** Set `runAsUser` and `runAsGroup` to the uid and gid
+the application's pods run as (their `securityContext.runAsUser`/`runAsGroup`). Without it, the
+backup pod runs as the k8up image's default uid 65532 with no supplementary groups, and restic
+cannot read any file that is not world-readable. It logs one `ERROR … during archival` line per
+skipped file and ends with `backup finished … "errors": N`, but the Job still completes, so no
+alert fires. One application's nightly backup skipped its config file this way until 2026-10-15.
+
+Running as the owner reads every file the owner can read, whatever its group and other bits, and
+changes nothing on the volume.
+The alternatives are worse:
+
+- `supplementalGroups: [<app-gid>]` only works while the application keeps group-read bits; a
+  file it rewrites as mode 600 is skipped again.
+- `fsGroup` on the backup pod makes the kubelet re-group the whole volume before every backup.
+
+An application whose pods write as more than one uid needs a backup identity that can read all of
+them; check the `backup finished` line for `"errors": 0` after the first run. Set the same
+`podSecurityContext` on any one-off `Backup` or `Restore` object, so restored files come back owned
+by the application. Use the full resource name `backups.k8up.io` with `kubectl`: the short name
+`backups` resolves to mariadb-operator's `Backup` type on this cluster.
+
 **Add both to the application's `kustomization.yaml`:**
 
 ```yaml
 resources:
-  - sopssecret-k8up-b2.yaml
-  - schedule.yaml
+  - schedule-<app>-k8up.yaml
+  - sopssecret-<app>-k8up-b2.yaml
 ```
+
+These are the file and object names every application here uses (`demo/schedule-demo-k8up.yaml`,
+`demo/sopssecret-demo-k8up-b2.yaml`), following the repo's `<kind>-<descriptive-name>.yaml`
+convention. The Secret the SopsSecret produces stays plain `k8up-b2`, which the Schedule references.
 
 By default, k8up backs up every PVC in the namespace. To exclude a pod's volumes: annotate the pod with `k8up.io/backup: "false"`.
 
@@ -158,6 +187,11 @@ deleted, or whose Schedule is removed outright, produces no series and therefore
 alert. A Schedule made inert by omitting its job blocks (see the demo app) sits in this
 state deliberately and stays silent. Detecting a _never-ran_ backup needs the periodic
 restore drill, which does not exist yet.
+
+**Also blind:** a backup that skipped files. restic's per-run error count only reaches the job log,
+because k8up pushes its restic statistics to a Pushgateway that does not exist here
+(`prometheus send failed … 127.0.0.1:80` in every backup log). `backup.podSecurityContext` (above)
+removes the known cause; the job log's `backup finished` line is the only place to confirm it.
 
 **Not covered by any of this:** whether a restore actually works. `check` runs plain
 `restic check` with no `--read-data`, so pack contents are never re-hashed, and no
