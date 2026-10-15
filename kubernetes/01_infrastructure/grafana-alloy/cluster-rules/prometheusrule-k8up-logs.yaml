@@ -12,10 +12,10 @@ spec:
     - name: k8up-backup-logs
       interval: 15m
       rules:
-        # LogQL: restic's per-run error count exists only in the job log. No `for`: Loki drops
-        # `for: 0m`, and the stored copy then never matches, so Alloy re-uploads every 30s.
+        # LogQL: restic's per-run error count exists only in the job log. `|-`: Loki stores the
+        # expr without a trailing newline; with `|` Alloy sees a diff and re-uploads every 30s.
         - alert: K8upBackupSkippedFiles
-          expr: |
+          expr: |-
             max by (namespace) (last_over_time(
               {container="backup", job=~".+/backup"}
                 |= "backup finished" |= `"errors":`
