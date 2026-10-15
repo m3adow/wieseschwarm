@@ -178,13 +178,14 @@ selected via `kube_job_owner{owner_kind="Backup"}`. That owner kind is unique to
 here — mariadb-operator's scheduled backup Jobs are owned by a `CronJob`, not its
 identically-named `Backup` CRD.
 
-| Alert                   | Signal                                     | Fires when              | Severity |
-| ----------------------- | ------------------------------------------ | ----------------------- | -------- |
-| `K8upBackupStale`       | KSM job completion, `owner_kind=Backup`    | no success in 36h       | critical |
-| `K8upCheckStale`        | KSM job completion, `owner_kind=Check`     | no success in 10d       | warning  |
-| `K8upBackupJobFailed`   | `k8up_jobs_failed_counter{jobType=backup}` | any failure in 6h       | critical |
-| `K8upScheduleJobFailed` | `k8up_schedule_last_job_succeeded == 0`    | last check/prune failed | warning  |
-| `K8upMetricsAbsent`     | `absent(k8up_schedules_gauge)`             | scrape or operator down | warning  |
+| Alert                    | Signal                                     | Fires when               | Severity |
+| ------------------------ | ------------------------------------------ | ------------------------ | -------- |
+| `K8upBackupStale`        | KSM job completion, `owner_kind=Backup`    | no success in 36h        | critical |
+| `K8upCheckStale`         | KSM job completion, `owner_kind=Check`     | no success in 10d        | warning  |
+| `K8upBackupJobFailed`    | `k8up_jobs_failed_counter{jobType=backup}` | any failure in 6h        | critical |
+| `K8upScheduleJobFailed`  | `k8up_schedule_last_job_succeeded == 0`    | last check/prune failed  | warning  |
+| `K8upMetricsAbsent`      | `absent(k8up_schedules_gauge)`             | scrape or operator down  | warning  |
+| `K8upBackupSkippedFiles` | LogQL on the backup job log (Loki ruler)   | latest backup errors > 0 | warning  |
 
 **Known blind spot:** the two staleness alerts key off retained Job objects.
 `successfulJobsHistoryLimit: 1` keeps exactly one successful Job per type, so the series
@@ -194,10 +195,15 @@ alert. A Schedule made inert by omitting its job blocks (see the demo app) sits 
 state deliberately and stays silent. Detecting a _never-ran_ backup needs the periodic
 restore drill, which does not exist yet.
 
-**Also blind:** a backup that skipped files. restic's per-run error count only reaches the job log,
-because k8up pushes its restic statistics to a Pushgateway that does not exist here
-(`prometheus send failed … 127.0.0.1:80` in every backup log). `backup.podSecurityContext` (above)
-removes the known cause; the job log's `backup finished` line is the only place to confirm it.
+**Skipped files are a log-only signal.** restic's per-run error count never becomes a
+metric: k8up pushes its restic statistics to a Pushgateway that does not exist here
+(`prometheus send failed … 127.0.0.1:80` in every backup log). `K8upBackupSkippedFiles` is
+therefore a LogQL rule (`grafana-alloy/cluster-rules/prometheusrule-k8up-logs.yaml`,
+evaluated by the Loki ruler, see `grafana-alloy/CLAUDE.md`). It reads the backup pod's
+`backup finished … "errors": N` line, keeps the latest value per namespace within 26 h, and
+fires while it is above 0; it resolves after the next clean backup. It depends on that exact
+log wording: check it whenever Renovate bumps k8up. A backup that did not run at all logs
+nothing, which `K8upBackupStale` covers.
 
 **Not covered by any of this:** whether a restore actually works. `check` runs plain
 `restic check` with no `--read-data`, so pack contents are never re-hashed. One manual restore

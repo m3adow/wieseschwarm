@@ -12,4 +12,5 @@ resources:
   - prometheusrule-cluster-pods.yaml
   - prometheusrule-external-dns.yaml
   - prometheusrule-k8up.yaml
+  - prometheusrule-k8up-logs.yaml
   - prometheusrule-series-budget.yaml

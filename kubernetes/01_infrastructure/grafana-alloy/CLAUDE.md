@@ -3,7 +3,7 @@
 Deploys the `k8s-monitoring` Helm chart (Alloy) to push metrics/events/logs to Grafana
 Cloud, plus a separate `grafana-alloy-rules` Application syncing `PrometheusRule` CRDs
 from `cluster-rules/` to Grafana Cloud's Mimir ruler via Alloy's
-`mimir.rules.kubernetes` component. Rule evaluation happens server-side in Mimir, not
+`mimir.rules.kubernetes` component (LogQL rules go to the Loki ruler instead, see below). Rule evaluation happens server-side in Mimir, not
 in-cluster — alerts keep firing/resolving correctly even during a full cluster outage.
 
 ## What's git-managed vs. manual
@@ -19,6 +19,42 @@ CRD this cluster's ArgoCD can sync. The config also embeds the Telegram bot toke
 plaintext, so it could not be committed as-is anyway. Grafana Cloud has a Terraform
 provider that could manage this declaratively, but adopting it for one receiver would add
 a second IaC tool/state store to a repo that's otherwise pure Kustomize+ArgoCD.
+
+## Two rule paths: metrics (Mimir) and logs (Loki)
+
+Alloy syncs `PrometheusRule` CRDs to two rulers, split by one label:
+
+| Rule language | `PrometheusRule` label | Alloy component          | Ruler                              |
+| ------------- | ---------------------- | ------------------------ | ---------------------------------- |
+| PromQL        | none (default)         | `mimir.rules.kubernetes` | Mimir (`prometheus-prod-65-...`)   |
+| LogQL         | `ruler: loki`          | `loki.rules.kubernetes`  | Loki (`logs-prod-012.grafana.net`) |
+
+The Mimir component excludes `ruler: loki` with a `NotIn` match expression, and the Loki
+component selects only it. Both sides are needed: Mimir rejects LogQL it cannot parse,
+and Loki would reject PromQL. A rule without the label goes to Mimir, as every rule did
+before the Loki path existed.
+
+Use a LogQL rule only for a signal that exists solely in logs (for example a job's
+summary line with no matching metric). Set the group's `interval` to the resolution the
+signal needs: the Loki ruler re-reads the whole range window on every evaluation.
+
+**Verified end to end (2026-10-15)** with a temporary always-firing LogQL rule: the shared
+`grafana-cloud-credentials` token may write Loki rules, the Loki ruler at the push hostname
+accepts them, and it hands firing alerts to the **same Cloud Alertmanager** as the Mimir
+ruler, so they reach Telegram through the existing routing. Mimir's rule count was
+unchanged by the `NotIn` exclusion.
+
+Two rules for LogQL rules:
+
+- **Write `expr: |-`, not `expr: |`.** Loki stores the expression without a trailing
+  newline, so with `|` the copy Alloy reads back never matches the CRD, and
+  `loki.rules.kubernetes` re-uploads the group on every `sync_interval` (30 s; visible as
+  repeated `updated rule group` log lines). Verified: switching to `|-` stopped the
+  uploads. Mimir rules keep `|`; that component does not show the problem.
+- **The Alloy selectors must be live before the first `ruler: loki` rule.** When both arrive
+  in one sync, `grafana-alloy-rules` can create the rule before Alloy reloads, and the old
+  Mimir component (then still selecting everything) uploads it to Mimir, which rejects
+  LogQL that is not also valid PromQL. Only the first introduction of the path is exposed.
 
 ## Two Alertmanagers, only one of which matters
 
