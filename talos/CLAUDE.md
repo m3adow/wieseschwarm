@@ -118,6 +118,6 @@ current status before upgrading Kubernetes.
 ## Key constraints
 
 - `wieseschwarm-all-patch.yaml` intentionally sets an impossible install disk (`/dev/doesnotexist`) so Talos refuses to install without an explicit device-specific patch — this prevents accidental disk selection on the wrong node.
-- Nodes 1 and 3 have Kingston SSDs for the OS install (2 TB NVMe reserved for Kubernetes storage). Node 2 uses its Samsung NVMe as the install disk (no separate large storage disk).
+- All nodes install the OS to a SATA SSD and keep their NVMe for Kubernetes storage: nodes 1 and 3 to Kingston SSDs (2 TB NVMe), node 2 to its Crucial SSD (256 GB NVMe). Node 2 used to install to its Samsung NVMe, but its firmware cannot boot Talos from it: the boot hangs at the Talos splash. A kexec reboot hides this, because it never goes through the firmware.
 - All nodes are on the same L2 VLAN (`192.168.10.0/24`), which is required for both the Talos built-in VIP and Piraeus DRBD replication.
 - Piraeus schematic: `e048aaf4...`. The installer tag in `piraeus-patch.yaml` is tracked by a Renovate custom manager against `siderolabs/talos` releases, so version bumps arrive as PRs — but merging one only changes the declared tag. The rolling node upgrade is still manual, via the `talos-upgrader` agent. Change the schematic itself by hand when adding or removing system extensions.

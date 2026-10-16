@@ -79,8 +79,8 @@ Verify with `--dry-run` first — it prints the exact config diff without applyi
   sets `HostnameConfig.auto: stable`, which invents a `talos-<generated>` hostname whenever no
   higher-priority source supplies one. On 2026-08-02 the DHCP server stopped sending option 12, all
   three nodes rebooted into generated hostnames and re-registered as **new** Kubernetes nodes,
-  orphaning the LINSTOR satellites and the hostname-pinned `storage-node-wieseschwarm-2` satellite
-  configuration. 107 of 164 pods were left unhealthy. The hostname patches pin the name as a static
+  orphaning the LINSTOR satellites and a then-existing hostname-pinned satellite configuration.
+  107 of 164 pods were left unhealthy. The hostname patches pin the name as a static
   hostname (highest priority, overrides DHCP), so applying without them re-arms the same failure.
 - `TALOSCONFIG` must point to `talos/secret/talosconfig` (or be set already in the shell). If commands
   fail with auth errors, remind the user: `export TALOSCONFIG=$(pwd)/talos/secret/talosconfig`
