@@ -1,8 +1,10 @@
 ---
-# This patch is for node wieseschwarm-2 only as it does not have a 2 TB NVMe,
-# so we use the 500GB SSD as Kubernetes storage instead.
+# wieseschwarm-2 installs to its Crucial SATA SSD: firmware cannot boot Talos from its
+# Samsung NVMe (hangs at the Talos splash). The NVMe backs pool1 via storage-nodes.
 machine:
   install:
     diskSelector:
-      model: SAMSUNG MZVLW256HEHP-000L7*
-      type: nvme
+      model: CT500MX500SSD1*
+      type: ssd
+  nodeLabels:
+    node-role.kubernetes.io/storage: "true"
