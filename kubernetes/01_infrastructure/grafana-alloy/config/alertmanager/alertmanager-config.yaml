@@ -20,6 +20,9 @@ receivers:
     telegram_configs:
       - bot_token: ${TELEGRAM_BOT_TOKEN}
         chat_id: ${TELEGRAM_CHAT_ID}
+        message: '{{ template "telegram.wieseschwarm.message" . }}'
+        # Plain text: HTML escapes count toward the 4096-rune limit
+        parse_mode: ""
         send_resolved: true
   - name: email
     email_configs:

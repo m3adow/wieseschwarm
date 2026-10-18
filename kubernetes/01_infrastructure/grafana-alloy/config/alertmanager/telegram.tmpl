@@ -1,0 +1,19 @@
+{{ define "telegram.wieseschwarm.line" -}}
+• {{ or .Annotations.description .Annotations.summary .Labels.alertname | reReplaceAll "(?s)^(.{180}).+$" "${1}…" }}
+{{- end }}
+
+{{ define "telegram.wieseschwarm.list" -}}
+{{ if gt (len .) 10 }}{{ range slice . 0 10 }}
+{{ template "telegram.wieseschwarm.line" . }}{{ end }}
+… and {{ len (slice . 10) }} more
+{{- else }}{{ range . }}
+{{ template "telegram.wieseschwarm.line" . }}{{ end }}{{ end }}
+{{- end }}
+
+{{ define "telegram.wieseschwarm.message" -}}
+{{ .GroupLabels.alertname }}{{ with .CommonLabels.severity }} [{{ . }}]{{ end }}
+{{- with .Alerts.Firing }}
+🔥 Firing: {{ len . }}{{ template "telegram.wieseschwarm.list" . }}{{ end }}
+{{- with .Alerts.Resolved }}
+✅ Resolved: {{ len . }}{{ template "telegram.wieseschwarm.list" . }}{{ end }}
+{{- end }}

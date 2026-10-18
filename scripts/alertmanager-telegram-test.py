@@ -3,10 +3,8 @@
 Telegram messages it would send. Requires Docker with host networking."""
 
 import argparse
-import html
 import json
 import os
-import re
 import shutil
 import subprocess
 import sys
@@ -108,8 +106,6 @@ def apply_test_overrides(rendered: str, tmpl: Path | None) -> str:
     return yq(expr, "-", stdin=rendered)
 
 
-def visible_runes(text: str) -> int:
-    return len(html.unescape(re.sub(r"<[^>]+>", "", text)))
 
 
 class CaptureServer:
@@ -259,16 +255,91 @@ def scenario_daemonset_flood(h: Harness) -> None:
         msgs = h.wait_messages(count=1, timeout=15)
     assert len(msgs) == 1, f"expected 1 message, got {len(msgs)}"
     text = msgs[0]
-    assert FALLBACK not in text, f"fallback sent: {text.splitlines()[0]!r}"
-    assert visible_runes(text) <= TELEGRAM_LIMIT, visible_runes(text)
-    assert "<b>KubeDaemonSetRolloutStuck</b> [warning]" in text
+    assert_sendable(text)
+    assert text.splitlines()[0] == "KubeDaemonSetRolloutStuck [warning]", text.splitlines()[0]
     assert "Firing: 9" in text
     assert all(f"{ns}/{ds}" in text for ns, ds in DAEMONSETS)
     assert "… and" not in text
 
 
+LONG_DESCRIPTION = ("'&<>\"x" * 200)[:1000]
+
+
+def bullets(text: str) -> list[str]:
+    return [line for line in text.splitlines() if line.startswith("• ")]
+
+
+def assert_sendable(text: str) -> None:
+    assert FALLBACK not in text, f"fallback sent: {text.splitlines()[0]!r}"
+    assert len(text) < TELEGRAM_LIMIT, f"{len(text)} runes, Alertmanager truncates at {TELEGRAM_LIMIT}"
+
+
+def scenario_cap_overflow(h: Harness) -> None:
+    alerts = [AlertSpec(labels={"alertname": "CapTest", "instance": f"i{i}", "severity": "warning"},
+                        annotations={"description": LONG_DESCRIPTION}) for i in range(30)]
+    with h.alertmanager():
+        h.post_alerts(alerts)
+        msgs = h.wait_messages(count=1)
+    assert len(msgs) == 1, f"expected 1 message, got {len(msgs)}"
+    text = msgs[0]
+    assert_sendable(text)
+    lines = bullets(text)
+    assert len(lines) == 10, len(lines)
+    assert "… and 20 more" in text
+    assert max(len(line) for line in lines) <= 183, [len(line) for line in lines]
+
+
+def scenario_mixed_firing_resolved(h: Harness) -> None:
+    alerts = [AlertSpec(labels={"alertname": "MixTest", "instance": f"i{i}", "severity": "warning"},
+                        annotations={"description": LONG_DESCRIPTION}) for i in range(30)]
+    with h.alertmanager():
+        h.post_alerts(alerts)
+        assert len(h.wait_messages(count=1)) == 1
+        past = datetime.now(timezone.utc) - timedelta(seconds=1)
+        for alert in alerts[:15]:
+            alert.ends_at = past
+        h.post_alerts(alerts[:15])
+        msgs = h.wait_messages(count=2, timeout=20)
+    assert len(msgs) == 2, f"expected 2 messages, got {len(msgs)}"
+    text = msgs[1]
+    assert_sendable(text)
+    assert "Firing: 15" in text and "Resolved: 15" in text
+    assert "🔥" in text and "✅" in text
+    assert len(bullets(text)) == 20, len(bullets(text))
+    assert text.count("… and 5 more") == 2
+
+
+def scenario_special_characters(h: Harness) -> None:
+    alert = AlertSpec(labels={"alertname": "SpecialCharTest", "severity": "warning"},
+                      annotations={"description": "<script>alert(1)</script> & co"})
+    with h.alertmanager():
+        h.post_alerts([alert])
+        msgs = h.wait_messages(count=1)
+    assert len(msgs) == 1, f"expected 1 message, got {len(msgs)}"
+    assert "• <script>alert(1)</script> & co" in bullets(msgs[0]), msgs[0]
+
+
+def scenario_annotation_fallbacks(h: Harness) -> None:
+    alerts = [
+        AlertSpec(labels={"alertname": "FallbackTest", "instance": "summary"},
+                  annotations={"summary": "only summary"}),
+        AlertSpec(labels={"alertname": "FallbackTest", "instance": "bare"}),
+    ]
+    with h.alertmanager():
+        h.post_alerts(alerts)
+        msgs = h.wait_messages(count=1)
+    assert len(msgs) == 1, f"expected 1 message, got {len(msgs)}"
+    lines = bullets(msgs[0])
+    assert "• only summary" in lines, msgs[0]
+    assert "• FallbackTest" in lines, msgs[0]
+
+
 SCENARIOS = {
     "daemonset_flood": scenario_daemonset_flood,
+    "cap_overflow": scenario_cap_overflow,
+    "mixed_firing_resolved": scenario_mixed_firing_resolved,
+    "special_characters": scenario_special_characters,
+    "annotation_fallbacks": scenario_annotation_fallbacks,
 }
 
 
