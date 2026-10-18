@@ -42,6 +42,8 @@ repos:
       - id: k8svalidate
         args: [--exclude, "**/*-patch.yaml"]
         files: .yaml$
+        # Alertmanager config payloads, not Kubernetes manifests
+        exclude: ^kubernetes/01_infrastructure/grafana-alloy/config/alertmanager/
         stages: ["pre-push"]
   # Local hook instead of the upstream kube-linter-docker hook: upstream
   # hardcodes a stale image tag in its entry (v0.6.4), independent of the
@@ -55,7 +57,7 @@ repos:
         language: docker_image
         entry: stackrox/kube-linter:v0.8.3 lint
         files: ^kubernetes/.*\.yaml$
-        exclude: -patch[-.]
+        exclude: (-patch[-.]|^kubernetes/01_infrastructure/grafana-alloy/config/alertmanager/)
         require_serial: true
         stages: ["pre-push"]
 
