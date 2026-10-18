@@ -12,3 +12,5 @@ __pycache__/
 **/TODO.md
 docs/superpowers/
 docs/reviews
+# Subagent memory (agents with "memory: local"); collects cluster details, never commit
+.claude/agent-memory-local/
