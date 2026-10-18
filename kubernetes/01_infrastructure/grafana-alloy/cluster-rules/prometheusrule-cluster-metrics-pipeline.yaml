@@ -28,3 +28,24 @@ spec:
               broken, or the cluster itself is unreachable. This rule is evaluated
               server-side by the Mimir ruler, so it keeps firing/resolving correctly
               even during a full cluster outage.
+    - name: alerting-pipeline
+      rules:
+        - alert: AlertmanagerConfigSyncStale
+          # absent(): CronJob pruned, or no success since it was created
+          expr: |
+            (
+              time() - kube_cronjob_status_last_successful_time{job="integrations/kubernetes/kube-state-metrics", namespace="monitoring", cronjob="alertmanager-config-sync"}
+              > 7200
+            )
+            or
+            absent(kube_cronjob_status_last_successful_time{job="integrations/kubernetes/kube-state-metrics", namespace="monitoring", cronjob="alertmanager-config-sync"})
+          for: 45m
+          labels:
+            severity: warning
+          annotations:
+            summary: "Alertmanager config sync is stale"
+            description: >-
+              The alertmanager-config-sync CronJob has not succeeded for over 2h,
+              or it does not exist. Grafana Cloud keeps its last config, so changes
+              to config/alertmanager/ in git are not applied. Check
+              `kubectl -n monitoring get cronjob,jobs` and the last Job's logs.
