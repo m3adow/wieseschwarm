@@ -54,6 +54,26 @@
       ],
       "depNameTemplate": "siderolabs/talos",
       "datasourceTemplate": "github-releases"
+    },
+    {
+      "customType": "regex",
+      "description": "Images pinned in the Alertmanager test harness",
+      "managerFilePatterns": ["/^scripts/alertmanager-telegram-test\\.py$/"],
+      "matchStrings": [
+        "_IMAGE = \"(?<depName>[^\":]+):(?<currentValue>[^\"]+)\""
+      ],
+      "datasourceTemplate": "docker"
+    },
+    {
+      "customType": "regex",
+      "description": "yq and mimirtool images in the Alertmanager break-glass commands",
+      "managerFilePatterns": [
+        "/^kubernetes/01_infrastructure/grafana-alloy/CLAUDE\\.md$/"
+      ],
+      "matchStrings": [
+        "(?<depName>mikefarah/yq|grafana/mimirtool):(?<currentValue>[\\d.]+)"
+      ],
+      "datasourceTemplate": "docker"
     }
   ],
   "packageRules": [

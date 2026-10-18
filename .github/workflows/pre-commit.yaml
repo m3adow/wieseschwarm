@@ -11,6 +11,8 @@ jobs:
     runs-on: ubuntu-26.04
     steps:
       - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0 # --from-ref below needs the PR's base commit
       - uses: actions/setup-python@v7
       # Run default hooks (in case pre-commit wasn't installed on commiters side)
       - uses: pre-commit/action@v3.0.1
@@ -18,5 +20,13 @@ jobs:
           extra_args: --all-files
       # Run additional longer running pre-commit hooks
       - uses: pre-commit/action@v3.0.1
+        env:
+          SKIP: alertmanager-harness # --all-files would run it on every PR
         with:
           extra_args: --all-files --hook-stage pre-commit --hook-stage pre-push
+      # Only when the PR touches the Alertmanager config, its CronJob or the harness
+      - uses: pre-commit/action@v3.0.1
+        with:
+          extra_args: >-
+            alertmanager-harness --hook-stage pre-push
+            --from-ref ${{ github.event.pull_request.base.sha }} --to-ref HEAD

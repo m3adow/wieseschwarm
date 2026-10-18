@@ -197,6 +197,11 @@ per severity, inhibition, and that every placeholder maps to its field and to a 
 entry. A new `${VAR}` placeholder therefore needs the CronJob env entry, the Secret key, the
 harness's `DUMMY_ENV` and the break-glass variable list.
 
+The `alertmanager-harness` pre-commit hook runs it automatically: locally on pushes that touch
+`config/` or the harness, and in CI on such PRs. That includes Renovate bumps of the CronJob's
+`yq` and `mimirtool` images, because the harness renders with the CronJob's `render` image and
+validates the result with `mimirtool alertmanager verify` from its `load` image.
+
 ### Break-glass manual upload
 
 Prefer the normal path even under pressure: fix the config in git, merge, wait for the

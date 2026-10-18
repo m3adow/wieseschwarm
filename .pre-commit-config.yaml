@@ -60,6 +60,15 @@ repos:
         exclude: (-patch[-.]|^kubernetes/01_infrastructure/grafana-alloy/config/alertmanager/)
         require_serial: true
         stages: ["pre-push"]
+      # Runs the whole suite (~70 s) when the Alertmanager config, CronJob or harness changes
+      - id: alertmanager-harness
+        name: alertmanager-harness
+        language: system
+        entry: python3 -I scripts/alertmanager-telegram-test.py
+        pass_filenames: false
+        files: ^(kubernetes/01_infrastructure/grafana-alloy/config/|scripts/alertmanager-telegram-test\.py$)
+        require_serial: true
+        stages: ["pre-push"]
 
   # May configure and fix this later
   # - repo: https://github.com/kubevious/cli
