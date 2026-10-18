@@ -334,12 +334,52 @@ def scenario_annotation_fallbacks(h: Harness) -> None:
     assert "• FallbackTest" in lines, msgs[0]
 
 
+def node_not_ready(cluster: str = "wieseschwarm") -> AlertSpec:
+    return AlertSpec(labels={"alertname": "NodeNotReady", "node": "wieseschwarm-2",
+                             "condition": "Ready", "status": "true", "severity": "critical",
+                             **KSM_LABELS, "cluster": cluster},
+                     annotations={"summary": "Node wieseschwarm-2 is NotReady"})
+
+
+def headers(msgs: list[str]) -> list[str]:
+    return sorted(m.splitlines()[0] for m in msgs)
+
+
+def scenario_inhibition(h: Harness) -> None:
+    targets = daemonset_alerts()[:2] + [
+        AlertSpec(labels={"alertname": "PodStuck", "namespace": "monitoring", "phase": "Pending",
+                          "pod": "grafana-alloy-node-exporter-j5dj2", "severity": "critical",
+                          **KSM_LABELS}),
+    ]
+    unrelated = AlertSpec(labels={"alertname": "KubeJobFailed", "namespace": "k8up",
+                                  "job_name": "backup-x", "severity": "warning", **KSM_LABELS})
+    with h.alertmanager():
+        h.post_alerts([node_not_ready(), *targets, unrelated])
+        msgs = h.wait_messages(count=3, timeout=10)
+        live = h.get_alerts()
+    assert headers(msgs) == ["KubeJobFailed [warning]", "NodeNotReady [critical]"], headers(msgs)
+    muted = [a for a in live if a["labels"]["alertname"] in ("KubeDaemonSetRolloutStuck", "PodStuck")]
+    assert len(muted) == 3, len(muted)
+    assert all(a["status"]["inhibitedBy"] for a in muted), [a["status"] for a in muted]
+
+
+def scenario_inhibition_cluster_scoped(h: Harness) -> None:
+    other = daemonset_alerts()[0]
+    other.labels["cluster"] = "other"
+    with h.alertmanager():
+        h.post_alerts([node_not_ready(), other])
+        msgs = h.wait_messages(count=2, timeout=10)
+    assert "KubeDaemonSetRolloutStuck [warning]" in headers(msgs), headers(msgs)
+
+
 SCENARIOS = {
     "daemonset_flood": scenario_daemonset_flood,
     "cap_overflow": scenario_cap_overflow,
     "mixed_firing_resolved": scenario_mixed_firing_resolved,
     "special_characters": scenario_special_characters,
     "annotation_fallbacks": scenario_annotation_fallbacks,
+    "inhibition": scenario_inhibition,
+    "inhibition_cluster_scoped": scenario_inhibition_cluster_scoped,
 }
 
 

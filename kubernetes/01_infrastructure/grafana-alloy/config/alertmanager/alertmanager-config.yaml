@@ -34,3 +34,8 @@ receivers:
         require_tls: false
         force_implicit_tls: true
         send_resolved: true
+# Targets carry no node label, so this mutes them cluster-wide
+inhibit_rules:
+  - source_matchers: ['alertname="NodeNotReady"']
+    target_matchers: ['alertname=~"KubeDaemonSetRolloutStuck|PodStuck"']
+    equal: [cluster]
