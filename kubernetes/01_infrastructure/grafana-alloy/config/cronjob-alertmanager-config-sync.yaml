@@ -1,0 +1,139 @@
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: alertmanager-config-sync
+  namespace: monitoring
+  labels:
+    app.kubernetes.io/name: alertmanager-config-sync
+spec:
+  schedule: "*/30 * * * *"
+  suspend: false
+  concurrencyPolicy: Forbid
+  # A retried run keeps its failed pod, which would trip PodStuck
+  successfulJobsHistoryLimit: 0
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      backoffLimit: 2
+      activeDeadlineSeconds: 300
+      template:
+        metadata:
+          labels:
+            app.kubernetes.io/name: alertmanager-config-sync
+        spec:
+          restartPolicy: Never
+          automountServiceAccountToken: false
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 65534
+            runAsGroup: 65534
+          initContainers:
+            - name: render
+              image: mikefarah/yq:4.54.1
+              command: [sh, -c]
+              args:
+                - >-
+                  yq '(.. | select(tag == "!!str")) |= envsubst(nu,ne)
+                  | (.receivers[] | select(has("telegram_configs")) | .telegram_configs[].chat_id)
+                  tag = "!!int"' /config/alertmanager-config.yaml > /work/rendered.yaml
+              env:
+                - name: TELEGRAM_BOT_TOKEN
+                  valueFrom:
+                    secretKeyRef:
+                      name: alertmanager-credentials
+                      key: TELEGRAM_BOT_TOKEN
+                - name: TELEGRAM_CHAT_ID
+                  valueFrom:
+                    secretKeyRef:
+                      name: alertmanager-credentials
+                      key: TELEGRAM_CHAT_ID
+                - name: SMTP_TO
+                  valueFrom:
+                    secretKeyRef:
+                      name: alertmanager-credentials
+                      key: SMTP_TO
+                - name: SMTP_FROM
+                  valueFrom:
+                    secretKeyRef:
+                      name: alertmanager-credentials
+                      key: SMTP_FROM
+                - name: SMTP_USERNAME
+                  valueFrom:
+                    secretKeyRef:
+                      name: alertmanager-credentials
+                      key: SMTP_USERNAME
+                - name: SMTP_PASSWORD
+                  valueFrom:
+                    secretKeyRef:
+                      name: alertmanager-credentials
+                      key: SMTP_PASSWORD
+                - name: SMTP_SMARTHOST
+                  valueFrom:
+                    secretKeyRef:
+                      name: alertmanager-credentials
+                      key: SMTP_SMARTHOST
+              resources:
+                requests:
+                  cpu: 10m
+                  memory: 32Mi
+                limits:
+                  memory: 64Mi
+              securityContext:
+                readOnlyRootFilesystem: true
+                allowPrivilegeEscalation: false
+                capabilities:
+                  drop: [ALL]
+              volumeMounts:
+                - name: config
+                  mountPath: /config
+                  readOnly: true
+                  recursiveReadOnly: Enabled
+                - name: work
+                  mountPath: /work
+          containers:
+            - name: load
+              image: grafana/mimirtool:3.2.2
+              args:
+                - alertmanager
+                - load
+                - /work/rendered.yaml
+                - /config/telegram.tmpl
+              env:
+                - name: MIMIR_ADDRESS
+                  value: https://alertmanager-prod-eu-west-2.grafana.net
+                - name: MIMIR_TENANT_ID
+                  value: "1636417"
+                - name: MIMIR_API_KEY
+                  valueFrom:
+                    secretKeyRef:
+                      name: alertmanager-credentials
+                      key: MIMIR_API_KEY
+              resources:
+                requests:
+                  cpu: 10m
+                  memory: 32Mi
+                limits:
+                  memory: 64Mi
+              securityContext:
+                readOnlyRootFilesystem: true
+                allowPrivilegeEscalation: false
+                capabilities:
+                  drop: [ALL]
+              volumeMounts:
+                - name: config
+                  mountPath: /config
+                  readOnly: true
+                  recursiveReadOnly: Enabled
+                - name: work
+                  mountPath: /work
+                  readOnly: true
+          volumes:
+            - name: config
+              configMap:
+                name: alertmanager-config
+            # Holds the rendered secrets; keep them off the node's disk
+            - name: work
+              emptyDir:
+                medium: Memory
+                sizeLimit: 1Mi

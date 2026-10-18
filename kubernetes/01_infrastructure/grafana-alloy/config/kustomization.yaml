@@ -3,4 +3,13 @@ apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 
 resources:
+  - cronjob-alertmanager-config-sync.yaml
+  - sopssecret-alertmanager-credentials.yaml
   - sopssecret-grafana-cloud.yaml
+
+configMapGenerator:
+  - name: alertmanager-config
+    namespace: monitoring
+    files:
+      - alertmanager/alertmanager-config.yaml
+      - alertmanager/telegram.tmpl
