@@ -133,10 +133,10 @@ Five skills in `.claude/skills/`:
 
 Two agents in `.claude/agents/`:
 
-| Agent                | Purpose                                                              |
-| -------------------- | -------------------------------------------------------------------- |
-| `talos-upgrader`     | Orchestrate safe rolling Talos OS upgrades with pre-flight + dry-run |
-| `talos-k8s-upgrader` | Orchestrate safe Kubernetes version upgrades on Talos                |
+| Agent                | Purpose                                                                                      |
+| -------------------- | -------------------------------------------------------------------------------------------- |
+| `talos-upgrader`     | Orchestrate safe rolling Talos OS upgrades with pre-flight checks and cold-boot verification |
+| `talos-k8s-upgrader` | Orchestrate safe Kubernetes version upgrades on Talos                                        |
 
 ## Renovate
 

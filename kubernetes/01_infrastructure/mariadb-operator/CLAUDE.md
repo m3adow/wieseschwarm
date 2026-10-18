@@ -17,6 +17,24 @@ chart is installed, the controller crashes on startup because `k8s.mariadb.com/v
 exist in the API server yet. Wave 0 ensures CRDs are registered before the wave-1 operator pod
 starts.
 
+## Stale status after node drains
+
+When a node drain evicts a Galera member, the `MariaDB` CR can stay at `Ready=False`
+(`StatefulSetNotReady`) after the member has rejoined. The `MaxScale` CR may also keep listing that
+server as `Down`. This was observed twice with operator 26.10.1 during the Talos rollout of
+2026-10-18, and it persisted for hours. The database itself was healthy every time.
+
+Before acting on that status, check Galera directly:
+
+```bash
+kubectl exec -n mariadb mariadb-cluster-0 -c mariadb -- sh -c \
+  'mariadb -uroot -p"$MARIADB_ROOT_PASSWORD" -e "SHOW STATUS LIKE \"wsrep_%\"" | grep -E "cluster_size|local_state_comment|cluster_status"'
+```
+
+If every member reports `Synced`, cluster size 3 and `Primary`, delete the `mariadb-operator` pod.
+The new pod recomputes both statuses within seconds. Do this before draining another node, so
+the operator never handles Galera recovery from a stale view.
+
 ## Database provisioning (native MariaDB CRDs)
 
 Applications request MariaDB databases by deploying three CRs in their own namespace.

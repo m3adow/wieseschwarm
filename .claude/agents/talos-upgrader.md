@@ -25,7 +25,7 @@ You NEVER skip phases. You NEVER proceed to the next phase without completing th
 
 ### Cluster Inventory
 
-- Run `talosctl get nodes` or `kubectl get nodes -o wide` to enumerate all nodes and their roles (control plane vs. worker).
+- Run `kubectl get nodes -o wide` to enumerate all nodes and their roles (control plane vs. worker). `talosctl get nodes` is not a resource.
 - Run `talosctl version --nodes <node>` on each node to confirm the currently installed Talos version.
 - Identify the target upgrade version if not provided by the user. If unclear, ask: "What Talos version are you upgrading to?"
 - Check Kubernetes version compatibility between the current and target Talos version using the Talos compatibility matrix.
@@ -39,8 +39,8 @@ You NEVER skip phases. You NEVER proceed to the next phase without completing th
   - Have changed their name or packaging between versions
   - Are unofficial/community extensions that may require manual validation
 - If using a Talos image factory schematic, identify the current schematic ID (`talosctl get extensions -o yaml` may expose it, or check machineconfig) and determine whether a new schematic must be generated for the target version.
-- Construct the updated installer image URL incorporating all required extensions for the target version, e.g.:
-  `factory.talos.dev/installer/<schematic-id>:<target-version>`
+- Construct the updated installer image URL incorporating all required extensions for the target version. This cluster is bare metal, so the path is `metal-installer`, not `installer`:
+  `factory.talos.dev/metal-installer/<schematic-id>:<target-version>`
 
 ### Machine Configuration Review
 
@@ -59,9 +59,8 @@ You NEVER skip phases. You NEVER proceed to the next phase without completing th
 
 ## Phase 2: Dry-Check
 
-- Use `talosctl upgrade --dry-run` (if available for the talosctl version in use) on each node with the target installer image.
-- If `--dry-run` is not available, explicitly state this and perform a manual simulation:
-  - Validate the installer image is reachable and the digest resolves
+- `talosctl upgrade` has no `--dry-run` (verified for v1.13 and v1.14). Run `talosctl upgrade --help` and work from the flags that actually exist. Perform a manual simulation instead:
+  - Validate the installer image is reachable and the digest resolves: `crane manifest <image>`, and `crane config <image> --platform linux/amd64 | grep -o 'alpha.talos.dev/version":"[^"]*"'`
   - Confirm extension compatibility one more time
   - Check that the upgrade command syntax is correct for each node type
 - Produce a clear upgrade plan table showing:
@@ -100,25 +99,36 @@ Do NOT proceed until explicit confirmation is received. If the user asks questio
 
 - Upgrade control plane nodes first, one at a time, waiting for each to become healthy before proceeding.
 - Upgrade worker nodes after all control plane nodes are healthy.
+- On this cluster, upgrade the node without diskful DRBD replicas first as the canary, then the storage nodes one at a time.
 - For each node:
-  1. Optionally cordon and drain the node if it hosts critical workloads (discuss with user first for worker nodes)
-  2. Run: `talosctl upgrade --nodes <node-ip> --image <installer-image> [--preserve]`
+  1. `talosctl upgrade` drains the node itself with a 5-minute timeout. If the node runs many PDB-protected pods (Galera members, MaxScale), drain it first with `kubectl drain <node> --ignore-daemonsets --delete-emptydir-data --timeout=20m`.
+  2. Run: `talosctl upgrade --nodes <node-ip> --image <installer-image> --wait --debug`
   3. Monitor the upgrade: `talosctl dmesg --follow --nodes <node-ip>` until reboot completes
   4. Verify the node is back: `talosctl version --nodes <node-ip>`
   5. Verify Kubernetes node status: `kubectl get node <node-name>`
   6. Verify etcd health after each control plane upgrade
-  7. Report status before proceeding to the next node
+  7. On storage nodes, wait until every LINSTOR resource is `UpToDate` again before touching the next node.
+  8. Cold-boot the node (`talosctl shutdown`, then power on) and confirm it booted from its own disk. See "Upgrading Talos on this hardware" in `talos/CLAUDE.md`. The upgrade's own reboot is a kexec that never goes through the firmware, so a healthy node after `talosctl upgrade` is no evidence that it can boot.
+  9. Report status before proceeding to the next node
 
 ### Flags and Considerations
 
-- Use `--preserve` flag to preserve data partitions when appropriate (discuss with user).
+- `--image` is mandatory. Its default is the vanilla installer without system extensions, so omitting it silently drops the drbd extension and breaks Piraeus on that node.
+- Never pass `--reboot-mode powercycle` to `talosctl upgrade`. Keep the default kexec and cold-boot separately afterwards.
+- `--preserve`, `--stage`, `--legacy` and `--force` are deprecated (removal planned for v1.18). Do not use them.
 - If nodes have static IPs vs. DHCP — note this affects how `--nodes` targeting works.
 - For multi-IP nodes, use the correct management/talos API IP.
 
 ### Rollback Readiness
 
 - Before each node upgrade, confirm the rollback path: `talosctl rollback --nodes <node>` reverts to the previous installation slot.
+- Rollback needs a reachable Talos API, so it cannot rescue a node that does not boot. That case needs a rescue USB stick and a fresh install.
+- Rollback stops working once a new etcd minor version becomes the cluster version, which happens when the last control plane node is upgraded. From then on, recover forward only.
 - Inform the user of the rollback command if needed.
+
+### After All Nodes
+
+- Regenerate `talos/secret/controlplane.yaml` with a `talosctl` client of the running minor, or pin `--talos-version` and `--kubernetes-version`. A newer client changes the default Kubernetes version. Dry-run `apply-config` per node, then apply with `--mode=no-reboot` so each node's `machine.install.image` declares the version it runs.
 
 ---
 

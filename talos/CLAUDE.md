@@ -115,6 +115,25 @@ current status before upgrading Kubernetes.
 
 **`UserNamespacesSupport` requires a matching sysctl, or the feature gate is silently non-functional.** Talos defaults `user.max_user_namespaces` to `0`; with the gate enabled but this unset, any pod setting `spec.hostUsers: false` fails pod sandbox creation with `failed to start noop process for unshare: fork/exec /proc/self/exe: no space left on device` — a Linux kernel `ENOSPC` quirk for hitting a `max_*_namespaces` ceiling, not an actual disk-space problem. `wieseschwarm-all-patch.yaml` sets `machine.sysctls.user.max_user_namespaces: "11255"` (Talos's own recommended value) alongside the gate. This bug can stay latent indefinitely — it only surfaces the first time a pod actually sets `hostUsers: false`.
 
+## Upgrading Talos on this hardware
+
+Use the `talos-upgrader` agent, one node at a time. The last rollout (v1.13.3 to v1.14.4, October 2026) established these rules:
+
+- **Cold-boot every node after an upgrade or a fresh install.** Both end in a kexec, which never goes through the firmware, so a node can run fine while being unable to boot. That hid wieseschwarm-2's NVMe boot hang for months. Shut down, power on, then compare the boot source:
+
+  ```bash
+  G=4a67b082-0a4c-41cf-b6c7-440b29bb8c4f
+  talosctl -n <ip> read /sys/firmware/efi/efivars/LoaderDevicePartUUID-$G | tail -c +5 | tr -d '\0'
+  talosctl -n <ip> get discoveredvolumes <esp-partition> -o yaml | grep partition_uuid
+  ```
+
+  Matching UUIDs mean the firmware booted that disk. The variable survives a kexec, so the check only proves something right after a power cycle. Remove any USB stick before testing: the firmware may boot it first.
+
+- **`--image` with the factory `metal-installer` URL is mandatory.** The default installer has no drbd extension.
+- **Upgrade the diskless node first, then the storage nodes one at a time.** Wait for every LINSTOR resource to be `UpToDate` before the next node.
+- **`gen config` follows the client version.** A client newer than the cluster bumps the Kubernetes images. Keep the client on the running minor, or pass `--talos-version` and `--kubernetes-version`.
+- **After the rollout, apply the regenerated config with `--mode=no-reboot`.** Upgrades change what runs, not the declared `machine.install.image`.
+
 ## Key constraints
 
 - `wieseschwarm-all-patch.yaml` intentionally sets an impossible install disk (`/dev/doesnotexist`) so Talos refuses to install without an explicit device-specific patch — this prevents accidental disk selection on the wrong node.
