@@ -28,31 +28,24 @@ For now, the project will use free SaaS offerings where applicable (e.g. for Met
 
 Metrics, logs and alert evaluation run in a free-tier [Grafana Cloud](https://grafana.com/products/cloud/) stack. None of this can be managed from this repo, so a fresh install needs it set up by hand:
 
-| Requirement                                             | Used for                                                                   |
-| ------------------------------------------------------- | -------------------------------------------------------------------------- |
-| A stack with Prometheus (Mimir) and Loki endpoints      | Alloy pushes metrics, logs and cluster events                              |
-| Access policy token with `metrics:write` + `logs:write` | the push credentials, stored as the `grafana-cloud-credentials` SopsSecret |
-| Access policy token with `alerts:read` + `alerts:write` | writing the Cloud Alertmanager config                                      |
-| A configured **Cloud Alertmanager**                     | notification delivery — alert rules on their own deliver nothing           |
+| Requirement                                             | Used for                                                                                   |
+| ------------------------------------------------------- | ------------------------------------------------------------------------------------------ |
+| A stack with Prometheus (Mimir) and Loki endpoints      | Alloy pushes metrics, logs and cluster events                                              |
+| Access policy token with `metrics:write` + `logs:write` | the push credentials, stored as the `grafana-cloud-credentials` SopsSecret                 |
+| Access policy token with `alerts:read` + `alerts:write` | pushing the Cloud Alertmanager config, stored in the `alertmanager-credentials` SopsSecret |
+| A Telegram bot and an SMTP relay                        | notification delivery — alert rules on their own deliver nothing                           |
 
 Alert rules themselves _are_ git-managed, in `kubernetes/01_infrastructure/grafana-alloy/cluster-rules/`. Alloy syncs them to the Mimir ruler, which evaluates them server-side so alerts keep working during a full cluster outage.
 
 ### Wiring up notifications
 
-The ruler dispatches firing alerts to the **Cloud Alertmanager**, which is configured separately from everything else:
+The ruler dispatches firing alerts to the **Cloud Alertmanager**. Its routing and Telegram template live in `kubernetes/01_infrastructure/grafana-alloy/config/alertmanager/`, with every secret as a `${VAR}` placeholder, and the `alertmanager-config-sync` CronJob pushes them to Grafana Cloud every 30 minutes:
 
 1. Create a Telegram bot with `@BotFather` and note the token. Send the bot a message, then read the numeric chat ID from `https://api.telegram.org/bot<TOKEN>/getUpdates` (only retains updates for 24h, so the message must be recent).
 2. In the Grafana Cloud portal, create the `alerts:read` + `alerts:write` access policy token.
-3. Write an Alertmanager YAML config with your receivers and route tree, then upload it:
-
-   ```bash
-   curl -s -X POST -u "<alertmanager-instance-id>:$AM_TOKEN" \
-     --data-binary @am-config.yaml \
-     https://<alertmanager-endpoint>/api/v1/alerts
-   ```
-
-4. Verify with a `GET` on the same URL. `alertmanager_config: ""` means nothing is configured and Mimir silently discards every alert.
+3. Put the token, the bot token, the chat ID and the SMTP values (all required: a missing one fails the sync Job; drop the `email` receiver and its route from the config to run without email) into `kubernetes/01_infrastructure/grafana-alloy/config/sopssecret-alertmanager-credentials.yaml` and encrypt it with `sops -e -i`.
+4. After ArgoCD has synced, push once without waiting for the schedule: `kubectl -n monitoring create job --from=cronjob/alertmanager-config-sync push-now`. A `GET` on the config API then shows the uploaded config; `alertmanager_config: ""` means nothing is configured and Mimir silently discards every alert.
 
 > **Do not configure contact points under Alerting → Contact points in the Grafana UI.** That is a second, independent Alertmanager which never receives these alerts, and its **Test** button passes anyway because it bypasses Alertmanager entirely. This combination is very easy to lose hours to.
 
-This cluster's concrete endpoint, instance ID and current routing are recorded in [`kubernetes/01_infrastructure/grafana-alloy/CLAUDE.md`](kubernetes/01_infrastructure/grafana-alloy/CLAUDE.md).
+This cluster's concrete endpoint, instance ID, routing, the sync mechanics and the local template test are documented in [`kubernetes/01_infrastructure/grafana-alloy/CLAUDE.md`](kubernetes/01_infrastructure/grafana-alloy/CLAUDE.md).

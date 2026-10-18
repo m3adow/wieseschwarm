@@ -12,13 +12,15 @@ in-cluster — alerts keep firing/resolving correctly even during a full cluster
 | ------------------------------ | ---------------------------------------------- | --------------- |
 | Metrics/events/logs collection | `application-grafana-alloy.yaml` values        | git (this repo) |
 | Alert rule definitions         | `cluster-rules/*.yaml` (`PrometheusRule` CRDs) | git (this repo) |
-| Contact points + routing       | Cloud Alertmanager config API (see below)      | **manual**      |
+| Contact points + routing       | `config/alertmanager/`, pushed by a CronJob    | git (this repo) |
 
-**Why routing is manual:** it lives in Grafana Cloud's Alertmanager, not as a Kubernetes
-CRD this cluster's ArgoCD can sync. The config also embeds the Telegram bot token in
-plaintext, so it could not be committed as-is anyway. Grafana Cloud has a Terraform
-provider that could manage this declaratively, but adopting it for one receiver would add
-a second IaC tool/state store to a repo that's otherwise pure Kustomize+ArgoCD.
+**How routing reaches Grafana Cloud:** the config lives in Grafana Cloud's Alertmanager,
+not in a Kubernetes object ArgoCD could apply. So ArgoCD deploys the config files as a
+ConfigMap, and the `alertmanager-config-sync` CronJob pushes them to the Cloud config API
+every 30 minutes. See "Cloud Alertmanager configuration" below. Rejected alternatives: the
+Grafana Terraform provider (a second IaC tool and state store for one receiver) and Alloy's
+`mimir.alerts.kubernetes` (experimental stability level; a breaking change could stop the
+whole Alloy instance from loading its config).
 
 ## Two rule paths: metrics (Mimir) and logs (Loki)
 
@@ -106,18 +108,135 @@ curl -s -u "1636417:$AM_TOKEN" \
 ```
 
 `alertmanager_config: ""` means nothing is configured and Mimir falls back to a default
-that silently discards every alert. `mimirtool alertmanager load ./config.yaml` is the
-supported equivalent of a POST.
+that silently discards every alert. The response also contains the bot token and SMTP
+password in plaintext, so do not paste it anywhere unredacted.
 
-Current routing (as of 2026-08-13): every severity goes to Telegram; `critical` repeats
-every 2h instead of 4h.
+### Routing
 
-**Email is not configured.** The Cloud Alertmanager has no mail server of its own, so
-`email_configs` needs a `global.smtp_smarthost` pointing at an SMTP relay you supply —
-unlike the built-in Alertmanager, where Grafana Cloud provides SMTP. Adding
-`critical` → Telegram + email therefore means supplying SMTP credentials **and** two
-sibling routes with `continue: true` on the first: a route dispatches to exactly one
-receiver, and the root receiver applies only when no child route matches.
+Every severity goes to Telegram, repeating every 4h. `critical` repeats on Telegram every 2h
+and additionally goes to email, repeating every 6h. A route dispatches to exactly one
+receiver and the root receiver applies only when no child route matches, so `critical` needs
+two sibling routes with `continue: true` on the first. The Cloud Alertmanager has no mail server of its own (unlike Grafana's built-in
+one), so the email receiver names its own relay. Like every SMTP value, it comes from the Secret.
+
+`NodeNotReady` inhibits `KubeDaemonSetRolloutStuck` and `PodStuck` (`equal: [cluster]`). One
+node outage otherwise floods the chat with every DaemonSet on that node. DaemonSet and pod
+alerts carry no `node` label, so the inhibition is cluster-wide: while any node is NotReady,
+a genuinely stuck pod on another node is muted too. Accepted for a 3-node homelab.
+
+### Config sync
+
+| Item       | Value                                                                              |
+| ---------- | ---------------------------------------------------------------------------------- |
+| Source     | `config/alertmanager/alertmanager-config.yaml`, `telegram.tmpl`                    |
+| ConfigMap  | `alertmanager-config-<hash>` (`configMapGenerator`)                                |
+| Secrets    | SopsSecret `alertmanager-credentials` (`sopssecret-alertmanager-credentials.yaml`) |
+| Pusher     | CronJob `alertmanager-config-sync`, `*/30 * * * *`                                 |
+| Push token | `MIMIR_API_KEY`, a dedicated `alerts:read` + `alerts:write` access policy token    |
+
+The config in git holds `${VAR}` placeholders for the bot token, chat ID and every SMTP value:
+the repo is public. The CronJob's `render` initContainer fills them from the Secret with `yq`
+(`envsubst(nu,ne)`, so a missing key fails the Job instead of pushing an empty value) into a
+memory-backed `emptyDir`, and `load` pushes it with `mimirtool alertmanager load`. Mimir
+rejects config fields that load files (`*_file`), so mounting the Secret and referencing it
+from the config is not an option. Mimir loads uploaded template files by name; the config needs
+no `templates:` field.
+
+A merge reaches Grafana Cloud at the next half hour. To push immediately:
+
+```bash
+kubectl -n monitoring create job --from=cronjob/alertmanager-config-sync push-now
+```
+
+It is a CronJob, not an ArgoCD PostSync hook, for two reasons: the SOPS operator updates the
+Secret asynchronously after ArgoCD applies the SopsSecret, so a hook can run with the old
+secret values; and a hook never corrects drift, while the CronJob overwrites manual edits
+within 30 minutes. An invalid config fails the Job (`mimirtool` validates before sending)
+and leaves the live config untouched; `KubeJobFailed` (warning, Telegram) and `PodStuck`
+(critical, so also email) then report it. Both stay firing until the failed Job is deleted
+(`kubectl -n monitoring delete job <name>`). Rotate the push token before its expiry, or
+every run fails.
+
+A sync that stops running produces no failed Job at all: suspended, pruned by ArgoCD, or never
+successful since it was created. `AlertmanagerConfigSyncStale` (warning, in
+`prometheusrule-cluster-metrics-pipeline.yaml`) covers that from
+`kube_cronjob_status_last_successful_time`: it fires when the last success is over 2h old or
+the series is absent, after 45 minutes. The metric is on the chart's default kube-state-metrics
+allowlist.
+
+`successfulJobsHistoryLimit: 0` is deliberate: a run that succeeds on a retry keeps its failed
+first pod for as long as the Job exists, and `PodStuck` would page for a failure that already
+healed itself. The CronJob's `.status.lastSuccessfulTime` still shows when the last push worked.
+
+### Telegram template and the 4096 limit
+
+Telegram rejects messages over 4096 characters. Alertmanager's Telegram notifier handles that
+differently by `parse_mode`: in `HTML` (the default) it replaces the **whole** message with
+"Alertmanager notification could not be sent: message length exceeds Telegram limits", and
+counts that as a successful send, so `notifications_failed_total` stays 0. In plain text it
+truncates instead. Upstream v0.34.1 also counts raw runes, markup and HTML escapes included,
+and `'` alone escapes to five characters.
+
+The default template printed every label, annotation and the `generatorURL` per alert; one
+URL-encoded `KubeDaemonSetRolloutStuck` expression alone is about 1,400 characters, so three
+grouped DaemonSet alerts already overflowed. `telegram.tmpl` therefore prints one line per
+alert (`description`, else `summary`, else the alert name), cut at 180 characters, at most 10
+lines per firing/resolved section plus `… and N more`, and the receiver sets `parse_mode: ""`.
+Worst case is about 3,800 characters. Alerts within a group are sorted by their label set as
+strings, so numbered labels order `1, 10, 11, 2`; Go templates offer no sort to change that.
+
+Test template or routing changes locally before merging (Docker required):
+
+```bash
+python3 -I scripts/alertmanager-telegram-test.py
+```
+
+It renders the config with dummy secrets, runs it in a local `prom/alertmanager` against a
+Telegram capture server and an SMTP stub, and checks size limits, plain-text output, routing
+per severity, inhibition, and that every placeholder maps to its field and to a CronJob env
+entry. A new `${VAR}` placeholder therefore needs the CronJob env entry, the Secret key, the
+harness's `DUMMY_ENV` and the break-glass variable list.
+
+### Break-glass manual upload
+
+Prefer the normal path even under pressure: fix the config in git, merge, wait for the
+ArgoCD sync and run the push-now Job above. Upload by hand only when that path is broken.
+
+A plain `kubectl patch` of the CronJob's `suspend` does not hold: `grafana-alloy-config` self-
+heals it back within minutes, and the root app self-heals the child Application. Stop the
+sync from the top down:
+
+```bash
+kubectl -n argocd patch application apps-of-apps --type json \
+  -p '[{"op":"remove","path":"/spec/syncPolicy/automated"}]'
+kubectl -n argocd patch application grafana-alloy-config --type json \
+  -p '[{"op":"remove","path":"/spec/syncPolicy/automated"}]'
+kubectl -n monitoring patch cronjob alertmanager-config-sync -p '{"spec":{"suspend":true}}'
+```
+
+Then render into a temp dir outside the repo and upload. Export the secrets with `read -rs`
+so they appear neither in shell history nor in the process list:
+
+```bash
+work=$(mktemp -d); trap 'rm -rf "$work"' EXIT
+d=kubernetes/01_infrastructure/grafana-alloy/config/alertmanager
+for v in TELEGRAM_BOT_TOKEN TELEGRAM_CHAT_ID SMTP_TO SMTP_FROM SMTP_USERNAME SMTP_PASSWORD SMTP_SMARTHOST \
+  MIMIR_API_KEY; do
+  read -rsp "$v: " "${v?}" && export "${v?}"; echo
+done
+expr=$(yq '.spec.jobTemplate.spec.template.spec.initContainers[0].args[0]' \
+  "$d/../cronjob-alertmanager-config-sync.yaml" | sed -E "s/^yq '(.*)' \/config.*/\1/")
+docker run --rm -u "$(id -u)" -v "$PWD/$d:/in:ro" \
+  -e TELEGRAM_BOT_TOKEN -e TELEGRAM_CHAT_ID -e SMTP_TO -e SMTP_FROM -e SMTP_USERNAME -e SMTP_PASSWORD -e SMTP_SMARTHOST \
+  mikefarah/yq:4.54.1 "$expr" /in/alertmanager-config.yaml > "$work/rendered.yaml"
+docker run --rm -u "$(id -u)" -v "$work:/w:ro" -v "$PWD/$d:/in:ro" -e MIMIR_API_KEY \
+  -e MIMIR_ADDRESS=https://alertmanager-prod-eu-west-2.grafana.net -e MIMIR_TENANT_ID=1636417 \
+  grafana/mimirtool:3.2.2 alertmanager load /w/rendered.yaml /in/telegram.tmpl
+```
+
+To return to normal, land the same change in git, then re-apply the root from git with
+`make argocd-apps-bootstrap`. That restores the root's `automated` block, the root restores
+the child's, and the child sets `suspend: false` again.
 
 `docs/superpowers/plans/2026-06-09-prometheus-rules-alerts.md` Tasks 5-7 describe the
 original bot creation steps, but its Tasks 6-7 send you to the **wrong Alertmanager** —
