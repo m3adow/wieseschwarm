@@ -3,6 +3,7 @@
 Telegram messages it would send. Requires Docker with host networking."""
 
 import argparse
+import functools
 import json
 import os
 import re
@@ -79,16 +80,28 @@ KSM_LABELS = {
 
 
 def yq(expr: str, *args: str, stdin: str | None = None, env: dict[str, str] | None = None,
-       mounts: dict[Path, str] | None = None) -> str:
+       mounts: dict[Path, str] | None = None, image: str = YQ_IMAGE) -> str:
     cmd = ["docker", "run", "--rm", "-i", "-u", f"{os.getuid()}:{os.getgid()}"]
     for host, container in (mounts or {}).items():
         cmd += ["-v", f"{host}:{container}:ro"]
     for key, value in (env or {}).items():
         cmd += ["-e", f"{key}={value}"]
-    cmd += [YQ_IMAGE, expr, *args]
+    cmd += [image, expr, *args]
     return subprocess.run(cmd, input=stdin, capture_output=True, text=True, check=True).stdout
 
 
+@functools.cache
+def cronjob_image(container: str) -> str:
+    """Image of a CronJob container, so image bumps in the manifest get tested."""
+    image = yq(".spec.jobTemplate.spec.template.spec | (.initContainers + .containers)[]"
+               f' | select(.name == "{container}") | .image',
+               f"/in/{CRONJOB.name}", mounts={CRONJOB.parent: "/in"}).strip()
+    if not image:
+        raise RuntimeError(f"no container {container!r} in {CRONJOB.name}")
+    return image
+
+
+@functools.cache
 def render_expr() -> str:
     """The yq expression the CronJob's render initContainer runs, so tests exercise it."""
     cmd = yq(".spec.jobTemplate.spec.template.spec.initContainers[0].args[0]",
@@ -101,7 +114,8 @@ def render_expr() -> str:
 
 
 def render(config: Path, env: dict[str, str]) -> str:
-    return yq(render_expr(), f"/in/{config.name}", env=env, mounts={config.parent: "/in"})
+    return yq(render_expr(), f"/in/{config.name}", env=env, mounts={config.parent: "/in"},
+              image=cronjob_image("render"))
 
 
 def apply_test_overrides(rendered: str, tmpl: Path | None) -> str:
@@ -634,20 +648,29 @@ def main() -> int:
         print(f"  {key} = {value}")
 
     tmpl = TEMPLATE if TEMPLATE.exists() else None
-    config_text = apply_test_overrides(render(CONFIG, DUMMY_ENV), tmpl)
+    rendered = render(CONFIG, DUMMY_ENV)
+    config_text = apply_test_overrides(rendered, tmpl)
+    user = ["-u", f"{os.getuid()}:{os.getgid()}"]
     with tempfile.TemporaryDirectory(prefix="am-check-") as d:
+        Path(d, "rendered.yml").write_text(rendered)
         Path(d, "alertmanager.yml").write_text(config_text)
         if tmpl:
             shutil.copy(tmpl, Path(d, "telegram.tmpl"))
-        check = subprocess.run(
-            ["docker", "run", "--rm", "-u", f"{os.getuid()}:{os.getgid()}", "--entrypoint", "amtool",
-             "-v", f"{d}:/etc/alertmanager:ro",
-             AM_IMAGE, "check-config", "/etc/alertmanager/alertmanager.yml"],
-            capture_output=True, text=True)
-    if check.returncode != 0:
-        print(check.stdout + check.stderr)
-        print("amtool check-config failed; aborting")
-        return 2
+        checks = {
+            "mimirtool alertmanager verify": [
+                "docker", "run", "--rm", *user, "-v", f"{d}:/w:ro", cronjob_image("load"),
+                "alertmanager", "verify", "/w/rendered.yml", "/w/telegram.tmpl"],
+            "amtool check-config": [
+                "docker", "run", "--rm", *user, "--entrypoint", "amtool",
+                "-v", f"{d}:/etc/alertmanager:ro",
+                AM_IMAGE, "check-config", "/etc/alertmanager/alertmanager.yml"],
+        }
+        for label, cmd in checks.items():
+            check = subprocess.run(cmd, capture_output=True, text=True)
+            if check.returncode != 0:
+                print(check.stdout + check.stderr)
+                print(f"{label} failed; aborting")
+                return 2
 
     harness = Harness(CaptureServer(CAPTURE_PORT), SmtpStub(SMTP_PORT), config_text)
     selected = args.only or list(SCENARIOS)

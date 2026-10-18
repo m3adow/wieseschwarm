@@ -84,12 +84,18 @@ Rule of thumb: a name the workload **dials** gets the dot; a name the cluster **
 
 Two stages — both run in CI (`pre-commit.yaml` workflow):
 
-| Stage        | When      | Includes                                                |
-| ------------ | --------- | ------------------------------------------------------- |
-| `pre-commit` | On commit | prettier, yamllint, detect-secrets, SOPS guard          |
-| `pre-push`   | On push   | k8svalidate (full K8s manifest validation), kube-linter |
+| Stage        | When      | Includes                                                                      |
+| ------------ | --------- | ----------------------------------------------------------------------------- |
+| `pre-commit` | On commit | prettier, yamllint, detect-secrets, SOPS guard                                |
+| `pre-push`   | On push   | k8svalidate (full K8s manifest validation), kube-linter, alertmanager-harness |
 
 Run locally: `pre-commit run --all-files`
+
+`alertmanager-harness` (local hook, needs Docker) runs `scripts/alertmanager-telegram-test.py`, about
+70 s, only when a push touches `kubernetes/01_infrastructure/grafana-alloy/config/` or the harness.
+CI skips it in the `--all-files` run, where its file filter would always match, and runs it in a
+separate step with `--from-ref` set to the PR base. Bypass locally with
+`SKIP=alertmanager-harness git push`.
 
 kube-linter runs as a `local` hook with a customized `entry` pinning the
 `stackrox/kube-linter` docker image (the upstream `kube-linter-docker` hook
@@ -149,15 +155,16 @@ Two dependencies are exempt from auto-merge at any update type:
 | `siderolabs/talos`                  | Merging changes only the declared installer tag. Nodes keep running the old version until a rolling upgrade via the `talos-upgrader` agent. |
 | `piraeusdatastore/piraeus-operator` | Replicated storage. CI never exercises DRBD, so green checks are not evidence the bump is safe.                                             |
 
-Five things need explicit configuration because Renovate would otherwise miss them:
+Six things need explicit configuration because Renovate would otherwise miss them:
 
-| What                                        | Manager              | Note                                                                                                                                                                                   |
-| ------------------------------------------- | -------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `.pre-commit-config.yaml` hook revs         | `pre-commit`         | Disabled by default in Renovate; enabled explicitly.                                                                                                                                   |
-| kube-linter image in the local hook `entry` | regex custom manager | The pin lives inside a shell command string, not an image field.                                                                                                                       |
-| ArgoCD install manifest URL                 | regex custom manager | A `raw.githubusercontent.com` URL is not a kustomize remote base.                                                                                                                      |
-| Piraeus operator manifest URL               | regex custom manager | A `releases/download/` asset URL is not a kustomize remote base.                                                                                                                       |
-| Talos Image Factory installer tag           | regex custom manager | `factory.talos.dev` serves no registry tag list, so the version is read from `siderolabs/talos` releases instead of the registry. Do not move `talos/` under the `kubernetes` manager. |
+| What                                        | Manager              | Note                                                                                                                                                                                                                                      |
+| ------------------------------------------- | -------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `.pre-commit-config.yaml` hook revs         | `pre-commit`         | Disabled by default in Renovate; enabled explicitly.                                                                                                                                                                                      |
+| kube-linter image in the local hook `entry` | regex custom manager | The pin lives inside a shell command string, not an image field.                                                                                                                                                                          |
+| ArgoCD install manifest URL                 | regex custom manager | A `raw.githubusercontent.com` URL is not a kustomize remote base.                                                                                                                                                                         |
+| Piraeus operator manifest URL               | regex custom manager | A `releases/download/` asset URL is not a kustomize remote base.                                                                                                                                                                          |
+| Talos Image Factory installer tag           | regex custom manager | `factory.talos.dev` serves no registry tag list, so the version is read from `siderolabs/talos` releases instead of the registry. Do not move `talos/` under the `kubernetes` manager.                                                    |
+| Alertmanager harness and break-glass images | regex custom manager | `yq`, `mimirtool` and `prom/alertmanager` pins in `scripts/alertmanager-telegram-test.py` and `grafana-alloy/CLAUDE.md`. The harness takes the render and push images from the CronJob, so a CronJob bump is tested with the new version. |
 
 Kubernetes control-plane versions live in the gitignored `talos/secret/controlplane.yaml` and are therefore invisible to Renovate. They are upgraded manually via the `talos-k8s-upgrader` agent.
 
