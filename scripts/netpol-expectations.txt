@@ -1,0 +1,27 @@
+# EXPECT HOST PORT, probed over TCP from an unlabeled namespace with no policies.
+# DENY means "listener exists but policy blocks"; prove that with a red run first.
+ALLOW traefik.traefik.svc.cluster.local. 80
+ALLOW traefik.traefik.svc.cluster.local. 443
+ALLOW argocd-server.argocd.svc.cluster.local. 80
+ALLOW kube-dns.kube-system.svc.cluster.local. 53
+DENY argocd-redis.argocd.svc.cluster.local. 6379
+DENY argocd-repo-server.argocd.svc.cluster.local. 8081
+DENY cert-manager-webhook.cert-manager.svc.cluster.local. 443
+DENY cert-manager.cert-manager.svc.cluster.local. 9402
+DENY demo.demo.svc.cluster.local. 80
+DENY demo.demo.svc.cluster.local. 9113
+DENY external-dns.external-dns.svc.cluster.local. 7979
+DENY k8up-metrics.k8up.svc.cluster.local. 8080
+DENY mariadb-cluster-maxscale.mariadb.svc.cluster.local. 3306
+DENY mariadb-cluster-maxscale.mariadb.svc.cluster.local. 8989
+DENY mariadb-cluster-primary.mariadb.svc.cluster.local. 3306
+DENY mariadb-cluster-internal.mariadb.svc.cluster.local. 5555
+DENY mariadb-operator-webhook.mariadb-operator.svc.cluster.local. 443
+DENY metallb-webhook-service.metallb-system.svc.cluster.local. 443
+DENY metrics-server.metrics-server.svc.cluster.local. 443
+DENY grafana-alloy-kube-state-metrics.monitoring.svc.cluster.local. 8080
+DENY grafana-alloy-alloy-metrics.monitoring.svc.cluster.local. 12345
+DENY grafana-alloy-alloy-operator.monitoring.svc.cluster.local. 8082
+DENY linstor-controller.piraeus-datastore.svc.cluster.local. 3370
+DENY piraeus-operator-webhook-service.piraeus-datastore.svc.cluster.local. 443
+DENY vpa-webhook.vpa.svc.cluster.local. 443
