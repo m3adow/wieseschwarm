@@ -152,10 +152,19 @@ It is a CronJob, not an ArgoCD PostSync hook, for two reasons: the SOPS operator
 Secret asynchronously after ArgoCD applies the SopsSecret, so a hook can run with the old
 secret values; and a hook never corrects drift, while the CronJob overwrites manual edits
 within 30 minutes. An invalid config fails the Job (`mimirtool` validates before sending)
-and leaves the live config untouched; `KubeJobFailed` (warning, Telegram) and `PodStuck`
-(critical, so also email) then report it. Both stay firing until the failed Job is deleted
-(`kubectl -n monitoring delete job <name>`). Rotate the push token before its expiry, or
-every run fails.
+and leaves the live config untouched. Rotate the push token before its expiry, or every run
+fails.
+
+A single failed run is not actionable: the next run 30 minutes later retries and overwrites
+everything. `ttlSecondsAfterFinished: 600` therefore deletes a finished Job and its pods after
+10 minutes, before `KubeJobFailed` and `PodStuck` (both `for: 15m`) would fire. Without it a
+failed Job lingers (`failedJobsHistoryLimit`) and keeps `PodStuck` (critical, so also email)
+firing until someone deletes it by hand. Example: a ~15-minute outage of the upstream DNS
+resolver on 2026-10-19 failed one run with `lookup … server misbehaving`, and the next run
+succeeded. A failure that persists is reported by `AlertmanagerConfigSyncStale` (below). The
+failed run's logs remain in Loki. kube-linter's `job-ttl-seconds-after-finished` check flags a
+TTL next to the history limits (the strictest one wins); here that is the intent, so the
+CronJob carries an `ignore-check` annotation with the reason.
 
 A sync that stops running produces no failed Job at all: suspended, pruned by ArgoCD, or never
 successful since it was created. `AlertmanagerConfigSyncStale` (warning, in
