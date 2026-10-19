@@ -13,4 +13,5 @@ resources:
   - prometheusrule-external-dns.yaml
   - prometheusrule-k8up.yaml
   - prometheusrule-k8up-logs.yaml
+  - prometheusrule-kube-network-policies.yaml
   - prometheusrule-series-budget.yaml

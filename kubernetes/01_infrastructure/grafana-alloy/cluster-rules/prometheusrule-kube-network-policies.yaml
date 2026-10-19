@@ -1,0 +1,39 @@
+---
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: kube-network-policies
+  namespace: monitoring
+  labels:
+    app.kubernetes.io/part-of: grafana-alloy
+spec:
+  groups:
+    - name: kube-network-policies
+      rules:
+        - alert: KubeNetworkPoliciesAgentDown
+          expr: |
+            count(up{job="kube-network-policies-metrics"} == 1) < 3
+              or absent(up{job="kube-network-policies-metrics"})
+          for: 15m
+          labels:
+            severity: critical
+          annotations:
+            summary: "NetworkPolicies are not enforced on at least one node."
+            description: >-
+              Fewer than 3 kube-network-policies agents are up. The engine fails open, so
+              every NetworkPolicy on the affected node is silently unenforced. A Talos
+              upgrade-k8s with kubeNetworkPoliciesEnabled off also removes the agent.
+        - alert: KubeNetworkPoliciesDropping
+          # Sustained rate, not a burst count: a probe run drops a few hundred packets in
+          # minutes, while a blocked 60 s scrape keeps dropping about 4 SYNs a minute.
+          expr: |
+            sum by (instance) (rate(kube_network_policies_packet_count{verdict="drop"}[10m])) > 0.03
+          for: 30m
+          labels:
+            severity: warning
+          annotations:
+            summary: "NetworkPolicies keep dropping traffic on {{ $labels.instance }}."
+            description: >-
+              {{ $value | printf "%.2f" }} packets/s have been denied for 30 minutes. A
+              legitimate flow is probably missing an allow rule. Check the agent logs for
+              "denied" lines (kube-network-policies/CLAUDE.md).
