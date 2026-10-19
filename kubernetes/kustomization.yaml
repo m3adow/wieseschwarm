@@ -35,6 +35,7 @@ resources:
   # Wave 3 — finalization + config needing wave-2 resources
   - 01_infrastructure/cloudflared/application-cloudflared.yaml
   - 01_infrastructure/external-dns/application-external-dns.yaml
+  - 01_infrastructure/network-policies/application-network-policies.yaml
   - 01_infrastructure/traefik/config/application-traefik-config.yaml
 
   # No wave — independent operators
