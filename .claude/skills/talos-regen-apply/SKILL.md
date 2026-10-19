@@ -21,7 +21,15 @@ cp talos/secret/controlplane.yaml /tmp/controlplane-before.yaml
 
 Run from `talos/secret/` (patches use relative paths):
 
+Pin both versions. `gen config` takes its defaults from the `talosctl` binary, not from the cluster, and the v1.14 client has a newer config contract than the live config, which was generated under v1.13.
+
+- **Without `--talos-version v1.13`** it emits the 1.14 multi-doc layout. The nodes accept it, but every regeneration then looks like a full restructuring and may enable unreviewed defaults. The `v1.13` pin is temporary: it holds the config at its current contract until the migration to the 1.14 format (#263). Bump it deliberately, never automatically.
+- **Without `--kubernetes-version`** it writes its own default Kubernetes release (1.37.1 for v1.14.2) into every control-plane image. Applying that starts an unplanned minor upgrade node by node, bypassing `upgrade-k8s`'s checks, with a newer kubelet than some apiservers along the way. The command reads the version from the running cluster, so it follows upgrades by itself.
+
+The patches don't overlap today, so their order doesn't change the output. It's kept identical everywhere so that a future overlapping key resolves the same way.
+
 ```bash
+K8S_VERSION=$(kubectl version -o json | jq -r .serverVersion.gitVersion | sed 's/^v//')
 cd talos/secret/ && \
 source .env && \
 talosctl gen config \
@@ -29,9 +37,10 @@ talosctl gen config \
   --with-secrets secrets.yaml \
   $CLUSTER_NAME https://$CLUSTER_ENDPOINT:6443 \
   --force -o controlplane.yaml \
+  --talos-version v1.13 --kubernetes-version "$K8S_VERSION" \
+  --config-patch @../wieseschwarm-all-patch.yaml \
   --config-patch @wieseschwarm-all-patch.yaml \
   --config-patch @../piraeus-patch.yaml \
-  --config-patch @../wieseschwarm-all-patch.yaml \
   --with-docs=false --with-examples=false
 ```
 

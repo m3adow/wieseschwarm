@@ -75,13 +75,13 @@ make argocd-password        # Print initial admin password
 
 Wave annotations control ArgoCD rollout order within a sync operation. **Infrastructure Applications use negative waves so that user Applications with no sync-wave annotation deploy last** — ArgoCD defaults to wave 0, which is after all infrastructure.
 
-| Wave | Current occupants                                                                                                                                                                                | Purpose                                                  |
-| ---- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------- |
-| -4   | `argocd`, `mariadb-operator-crds`, `prometheus-operator-crds`                                                                                                                                    | ArgoCD self-upgrade + CRD-only installs; processed first |
-| -3   | `cert-manager`, `metallb`, `mariadb-operator`, `piraeus`, `sops-secrets-operator`, `vpa`                                                                                                         | CRD-providing operators; wave -2 config depends on them  |
-| -2   | `cert-manager-config`, `metallb-config`, `traefik`, `reloader`, `reflector`, `k8up`, `mariadb-operator-config`, `metrics-server`, `grafana-alloy`, `grafana-alloy-rules`, `grafana-alloy-config` | Operators/config that only need core K8s resources       |
-| -1   | `traefik-config`, `cloudflared`, `external-dns`                                                                                                                                                  | Finalize + config needing wave -2 resources              |
-| 0    | all user-facing applications (default; no annotation needed)                                                                                                                                     | Applications deploy after all infrastructure             |
+| Wave | Current occupants                                                                                                                                                                                                         | Purpose                                                  |
+| ---- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------- |
+| -4   | `argocd`, `mariadb-operator-crds`, `prometheus-operator-crds`                                                                                                                                                             | ArgoCD self-upgrade + CRD-only installs; processed first |
+| -3   | `cert-manager`, `metallb`, `mariadb-operator`, `piraeus`, `sops-secrets-operator`, `vpa`                                                                                                                                  | CRD-providing operators; wave -2 config depends on them  |
+| -2   | `cert-manager-config`, `metallb-config`, `traefik`, `reloader`, `reflector`, `k8up`, `kube-network-policies`, `mariadb-operator-config`, `metrics-server`, `grafana-alloy`, `grafana-alloy-rules`, `grafana-alloy-config` | Operators/config that only need core K8s resources       |
+| -1   | `traefik-config`, `cloudflared`, `external-dns`                                                                                                                                                                           | Finalize + config needing wave -2 resources              |
+| 0    | all user-facing applications (default; no annotation needed)                                                                                                                                                              | Applications deploy after all infrastructure             |
 
 **Rule of thumb:** Helm chart installs at wave N, their Kustomize config at wave N+1. New applications need no sync-wave annotation — the ArgoCD default of wave 0 guarantees they land after all infrastructure waves.
 
@@ -125,24 +125,25 @@ All Helm values are currently inlined in Application specs (`spec.sources[].helm
 
 ## Namespace mapping
 
-| Component              | Namespace               |
-| ---------------------- | ----------------------- |
-| ArgoCD                 | `argocd`                |
-| cert-manager           | `cert-manager`          |
-| cloudflared            | `cloudflared`           |
-| external-dns           | `external-dns`          |
-| Grafana Alloy          | `monitoring`            |
-| MetalLB                | `metallb-system`        |
-| Metrics Server         | `metrics-server`        |
-| Traefik                | `traefik`               |
-| VPA                    | `vpa`                   |
-| Piraeus                | `piraeus-datastore`     |
-| SOPS Secrets Operator  | `sops-secrets-operator` |
-| Reloader               | `reloader`              |
-| Reflector              | `reflector`             |
-| k8up                   | `k8up`                  |
-| MariaDB Operator       | `mariadb-operator`      |
-| MariaDB Galera Cluster | `mariadb`               |
+| Component                                                     | Namespace               |
+| ------------------------------------------------------------- | ----------------------- |
+| ArgoCD                                                        | `argocd`                |
+| cert-manager                                                  | `cert-manager`          |
+| cloudflared                                                   | `cloudflared`           |
+| external-dns                                                  | `external-dns`          |
+| Grafana Alloy                                                 | `monitoring`            |
+| MetalLB                                                       | `metallb-system`        |
+| Metrics Server                                                | `metrics-server`        |
+| Traefik                                                       | `traefik`               |
+| VPA                                                           | `vpa`                   |
+| Piraeus                                                       | `piraeus-datastore`     |
+| SOPS Secrets Operator                                         | `sops-secrets-operator` |
+| Reloader                                                      | `reloader`              |
+| Reflector                                                     | `reflector`             |
+| k8up                                                          | `k8up`                  |
+| MariaDB Operator                                              | `mariadb-operator`      |
+| MariaDB Galera Cluster                                        | `mariadb`               |
+| kube-network-policies (metrics only; engine is Talos-managed) | `kube-system`           |
 
 All Applications use `CreateNamespace=true`; ArgoCD creates namespaces on-demand.
 
