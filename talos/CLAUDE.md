@@ -27,13 +27,20 @@ See `talos/CLAUDE.local.md` for the environment variable values.
 
 `machineconfig patch` appends list fields on every run, causing duplicate kernel modules and extensions.
 
+Pin both versions. `gen config` takes its defaults from the `talosctl` binary, not from the cluster:
+without `--talos-version` a v1.14 client emits the multi-doc layout, and without
+`--kubernetes-version` it writes its own default Kubernetes release into every control-plane image.
+See "Key constraints" for why `v1.13` is temporary.
+
 ```bash
+K8S_VERSION=$(kubectl version -o json | jq -r .serverVersion.gitVersion | sed 's/^v//')
 cd talos/secret/
 talosctl gen config \
   --output-types controlplane \
   --with-secrets secrets.yaml \
   $CLUSTER_NAME https://$CLUSTER_ENDPOINT:6443 \
   --force \
+  --talos-version v1.13 --kubernetes-version "$K8S_VERSION" \
   --config-patch @../wieseschwarm-all-patch.yaml \
   --config-patch @wieseschwarm-all-patch.yaml \
   --config-patch @../piraeus-patch.yaml
@@ -46,15 +53,17 @@ Then apply per node — see `talos/CLAUDE.local.md` for the apply commands.
 The `talosconfig` client config only needs re-generation when cluster secrets or the API endpoint change. Patches are not needed.
 
 ```bash
+K8S_VERSION=$(kubectl version -o json | jq -r .serverVersion.gitVersion | sed 's/^v//')
 cd talos/secret/
 talosctl gen config \
   --output-types controlplane \
   --with-secrets secrets.yaml \
   $CLUSTER_NAME https://$CLUSTER_ENDPOINT:6443 \
   --force -o controlplane.yaml \
+  --talos-version v1.13 --kubernetes-version "$K8S_VERSION" \
+  --config-patch @../wieseschwarm-all-patch.yaml \
   --config-patch @wieseschwarm-all-patch.yaml \
   --config-patch @../piraeus-patch.yaml \
-  --config-patch @../wieseschwarm-all-patch.yaml \
   --with-docs=false --with-examples=false
 ```
 
@@ -75,6 +84,7 @@ Set env vars printed after creation: `export TALOSCONFIG=/tmp/talosconfig.dev KU
 - **kube-vip service mode only** for app-facing `LoadBalancer` services (e.g. Traefik VIP).
 - **Piraeus Datastore** (DRBD + LVM_THIN) for replicated storage. `piraeus-patch.yaml` sets the Talos Image Factory installer with the `siderolabs/drbd` extension and loads `drbd`, `drbd_transport_tcp`, and `dm-thin-pool` kernel modules.
 - **Traefik + Gateway API** for ingress, not `ingress-nginx`.
+- **NetworkPolicy engine is Talos-managed.** `kubeNetworkPoliciesEnabled: true` makes Talos render a `kube-network-policies` container into the `kube-flannel` DaemonSet. Talos only applies that (and its version bumps) on `talosctl upgrade-k8s`, never on an OS upgrade or config apply. Metrics, alerts and behaviour: `kubernetes/01_infrastructure/kube-network-policies/CLAUDE.md`.
 
 ## Security defaults inherited from Talos
 
@@ -131,10 +141,18 @@ Use the `talos-upgrader` agent, one node at a time. The last rollout (v1.13.3 to
 
 - **`--image` with the factory `metal-installer` URL is mandatory.** The default installer has no drbd extension.
 - **Upgrade the diskless node first, then the storage nodes one at a time.** Wait for every LINSTOR resource to be `UpToDate` before the next node.
-- **`gen config` follows the client version.** A client newer than the cluster bumps the Kubernetes images. Keep the client on the running minor, or pass `--talos-version` and `--kubernetes-version`.
+- **`gen config` takes its defaults from the client, not the cluster.** Any client whose default Kubernetes release differs from the running one changes the control-plane images: the v1.14.2 client writes 1.37.1. Applying such a config upgrades Kubernetes node by node, outside `upgrade-k8s`. Always pass `--talos-version` and the running `--kubernetes-version`, as the examples above do.
 - **After the rollout, apply the regenerated config with `--mode=no-reboot`.** Upgrades change what runs, not the declared `machine.install.image`.
 
 ## Key constraints
+
+- **`--talos-version` is the config contract, and `v1.13` is temporary.** The live config was generated under the 1.13 contract, as a single v1alpha1 document. Talos 1.14 deprecated those fields (`.cluster.network`, `.machine.kubelet` and more) in favour of typed documents, so the contract has to move before a release removes them. Migration: #263. After a Talos minor upgrade, bump it deliberately:
+  1. Generate with the new contract.
+  2. Compare the result semantically with the live config.
+  3. Review the newly enabled defaults.
+  4. Apply with `--dry-run` first.
+
+  Never derive it from the running Talos version: the first regeneration after an upgrade would then silently switch contracts.
 
 - `wieseschwarm-all-patch.yaml` intentionally sets an impossible install disk (`/dev/doesnotexist`) so Talos refuses to install without an explicit device-specific patch — this prevents accidental disk selection on the wrong node.
 - All nodes install the OS to a SATA SSD and keep their NVMe for Kubernetes storage: nodes 1 and 3 to Kingston SSDs (2 TB NVMe), node 2 to its Crucial SSD (256 GB NVMe). Node 2 used to install to its Samsung NVMe, but its firmware cannot boot Talos from it: the boot hangs at the Talos splash. A kexec reboot hides this, because it never goes through the firmware.
