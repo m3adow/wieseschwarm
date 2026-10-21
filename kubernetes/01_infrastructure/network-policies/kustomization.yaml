@@ -8,6 +8,7 @@ resources:
   - cloudflared
   - external-dns
   - k8up
+  - mariadb
   - mariadb-operator
   - metallb-system
   - metrics-server
