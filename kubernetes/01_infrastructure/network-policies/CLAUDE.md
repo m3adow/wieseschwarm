@@ -14,7 +14,10 @@ Ingress NetworkPolicies for infrastructure namespaces. Enforced by the Talos-man
 - Not covered on purpose:
   - `kube-system`: hostNetwork control plane; CoreDNS serves every pod.
   - `default`: no workloads.
-  - `argocd`: its upstream policies are left untouched.
+  - `argocd`: no baseline, and its upstream policies are left untouched. `argocd/` only adds
+    `allow-own-node`, scoped to the pods those policies already isolate. Without it, the probe
+    teardown on `argocd-notifications-controller:9001` (`tcpSocket`) was dropped: about hourly
+    on wieseschwarm-1, but often enough on wieseschwarm-3 to fire `KubeNetworkPoliciesDropping`.
 
 ## Rules
 
@@ -33,6 +36,8 @@ Ingress NetworkPolicies for infrastructure namespaces. Enforced by the Talos-man
   unread data (a large `/metrics` response, `tcpSocket` probes) end with a RST that has no owning
   socket, and without this policy each one was dropped, firing `KubeNetworkPoliciesDropping`.
   Other nodes are not covered: their traffic arrives as their flannel.1 address `10.244.X.0`.
+  The address set exists twice, in `components/baseline` and `argocd/`. A node change updates
+  both: `git grep -l '10.244.0.1/32' kubernetes/`.
 - **Rules match pod ports, not Service ports** (the engine evaluates after DNAT).
 - **Exposed LoadBalancer ports get a rule without `from`.** All LB Services use
   `externalTrafficPolicy: Cluster`, so client IPs are partly masqueraded away.
