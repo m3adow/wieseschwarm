@@ -11,6 +11,7 @@ resources:
   - mariadb-operator
   - metallb-system
   - metrics-server
+  - monitoring
   - reflector
   - reloader
   - sops-secrets-operator
