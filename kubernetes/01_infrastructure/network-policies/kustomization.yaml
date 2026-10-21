@@ -1,0 +1,18 @@
+---
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  - argocd
+  - cert-manager
+  - cloudflared
+  - external-dns
+  - k8up
+  - mariadb-operator
+  - metallb-system
+  - metrics-server
+  - reflector
+  - reloader
+  - sops-secrets-operator
+  - traefik
+  - vpa

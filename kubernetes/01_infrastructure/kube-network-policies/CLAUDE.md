@@ -24,7 +24,10 @@ only adds what Talos does not: a metrics Service + ServiceMonitor. Alerts live i
 - **Fail-open.** If the agent is down, traffic is unfiltered, never blackholed.
 - **Evaluated after DNAT.** Policies match pod IPs and container ports, not Service ports.
 - **Strict mode.** Tightening a policy cuts established connections within about 30 s.
-- **Kubelet probes are always allowed** (uid-0 host traffic is exempt).
+- **uid-0 host traffic is exempt, kernel-generated packets are not.** Kubelet probe connections
+  pass, but the RST that closes a probe with unread data has no owning socket and is evaluated
+  like any host packet. The baseline's `allow-own-node` policy covers that; see
+  `kubernetes/01_infrastructure/network-policies/CLAUDE.md`.
 - **kube-apiserver is not exempt.** Webhooks and aggregated APIs need the host-source `ipBlock`
   set documented in `kubernetes/01_infrastructure/network-policies/CLAUDE.md`.
 - **hostNetwork pods are external.** Only `ipBlock` matches them as sources, and policies do not

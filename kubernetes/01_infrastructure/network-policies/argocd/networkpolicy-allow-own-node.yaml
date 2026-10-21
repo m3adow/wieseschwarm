@@ -1,0 +1,36 @@
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-own-node
+spec:
+  # The baseline's allow-own-node, limited to the pods ArgoCD's upstream policies already
+  # isolate. A podSelector: {} here would newly isolate every pod they leave unselected.
+  podSelector:
+    matchExpressions:
+      - key: app.kubernetes.io/name
+        operator: In
+        values:
+          - argocd-application-controller
+          - argocd-applicationset-controller
+          - argocd-dex-server
+          - argocd-notifications-controller
+          - argocd-redis
+          - argocd-repo-server
+          - argocd-server
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - ipBlock:
+            cidr: 192.168.10.11/32
+        - ipBlock:
+            cidr: 192.168.10.12/32
+        - ipBlock:
+            cidr: 192.168.10.13/32
+        - ipBlock:
+            cidr: 10.244.0.1/32
+        - ipBlock:
+            cidr: 10.244.1.1/32
+        - ipBlock:
+            cidr: 10.244.2.1/32

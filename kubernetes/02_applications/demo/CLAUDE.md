@@ -35,6 +35,18 @@ exception — it is present as a structural example only and is not exercised.
   too. Real apps should use the nightly schedule/retention template from
   `kubernetes/01_infrastructure/k8up/CLAUDE.md`.
 
+## NetworkPolicies
+
+demo is the reference for app NetworkPolicies. It pulls in the shared baseline component
+(`default-deny-ingress`, `allow-same-namespace`, `allow-own-node`) and adds one policy per
+cross-namespace source: `networkpolicy-allow-traefik.yaml` (port 80) and
+`networkpolicy-allow-alloy-metrics.yaml` (port 9113, the exporter). The namespace label
+`netpol.wieseschwarm/mariadb-client: "true"` in `namespace.yaml` opts it into MaxScale access.
+
+The peer pod selectors use `matchExpressions`, not `matchLabels`, because this app's `labels:`
+transformer would rewrite `matchLabels` peers to `demo`. Rules, the host-source set and how to
+add a namespace: `kubernetes/01_infrastructure/network-policies/CLAUDE.md`.
+
 ## Public exposure
 
 `demo.wieseclan.eu.org` is exposed to the internet through the Cloudflare Tunnel —
