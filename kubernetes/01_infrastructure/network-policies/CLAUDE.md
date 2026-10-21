@@ -52,14 +52,17 @@ Ingress NetworkPolicies for infrastructure namespaces. Enforced by the Talos-man
 kube-apiserver and hostNetwork pods are not pods to the engine. Allow them with exactly these
 `ipBlock`s, and only on the port that needs them:
 
-| CIDR               | What                                                         |
-| ------------------ | ------------------------------------------------------------ |
-| `192.168.10.11/32` | wieseschwarm-1 node IP (same-node apiserver, pre-masquerade) |
-| `192.168.10.12/32` | wieseschwarm-2 node IP                                       |
-| `192.168.10.13/32` | wieseschwarm-3 node IP                                       |
-| `10.244.0.0/31`    | wieseschwarm-1 flannel.1 (.0) + cni0 (.1)                    |
-| `10.244.1.0/31`    | wieseschwarm-3 flannel.1 + cni0                              |
-| `10.244.2.0/31`    | wieseschwarm-2 flannel.1 + cni0                              |
+| CIDR               | What                                          |
+| ------------------ | --------------------------------------------- |
+| `192.168.10.11/32` | node IP (same-node apiserver, pre-masquerade) |
+| `192.168.10.12/32` | node IP                                       |
+| `192.168.10.13/32` | node IP                                       |
+| `10.244.0.0/31`    | wieseschwarm-1 flannel.1 (.0) + cni0 (.1)     |
+| `10.244.1.0/31`    | wieseschwarm-3 flannel.1 + cni0               |
+| `10.244.2.0/31`    | wieseschwarm-2 flannel.1 + cni0               |
+
+Manifests need the node IPs as literals, but which node has which IP stays out of the public
+docs (`talos/CLAUDE.local.md`, gitignored).
 
 Never widen to `10.244.0.0/16` (every pod) or `192.168.10.0/24` (the whole server VLAN).
 **Adding a node or changing a podCIDR requires updating every file that contains this set:**
