@@ -1,0 +1,32 @@
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-host-to-linstor-controller
+spec:
+  podSelector:
+    matchExpressions:
+      - key: app.kubernetes.io/component
+        operator: In
+        values:
+          - linstor-controller
+  policyTypes:
+    - Ingress
+  # linstor-csi-node is hostNetwork, so it only matches as an ipBlock source.
+  ingress:
+    - from:
+        - ipBlock:
+            cidr: 192.168.10.11/32
+        - ipBlock:
+            cidr: 192.168.10.12/32
+        - ipBlock:
+            cidr: 192.168.10.13/32
+        - ipBlock:
+            cidr: 10.244.0.0/31
+        - ipBlock:
+            cidr: 10.244.1.0/31
+        - ipBlock:
+            cidr: 10.244.2.0/31
+      ports:
+        - protocol: TCP
+          port: 3370
