@@ -98,7 +98,7 @@ spec:
                   mountPath: /work
           containers:
             - name: load
-              image: grafana/mimirtool:3.2.2
+              image: grafana/mimirtool:3.2.3
               args:
                 - alertmanager
                 - load
