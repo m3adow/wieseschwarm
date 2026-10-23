@@ -163,6 +163,10 @@ Add entries to `kubernetes/kustomization.yaml` under `resources:`. Order matters
 - 01_infrastructure/<name>/config/application.yaml # if using config pattern
 ```
 
+## Step 6b: NetworkPolicy
+
+Every new infra namespace gets `kubernetes/01_infrastructure/network-policies/<ns>/` (baseline component + one `networkpolicy-allow-*.yaml` per cross-namespace or apiserver source), listed in that directory's `kustomization.yaml`. Follow "Adding a namespace" in `kubernetes/01_infrastructure/network-policies/CLAUDE.md`. Webhook and aggregated-API pods need the host-source `ipBlock` set. Select on the labels the pods actually carry (`kubectl get pods --show-labels`), not the ones you expect.
+
 ## Step 7: Validate
 
 Run the validate-manifests skill or:

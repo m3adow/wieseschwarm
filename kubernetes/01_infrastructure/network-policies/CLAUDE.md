@@ -75,18 +75,8 @@ behaviour can also change it. Re-check with `talosctl netstat -k -t` on a webhoo
    `components: [../components/baseline]`, and any `networkpolicy-allow-*.yaml`.
 2. Add a `DENY` line per listener to `scripts/netpol-expectations.txt`. Run
    `scripts/netpol-probe.sh` and confirm the lines are red **before** applying.
-3. Apply the baseline's allows first, then the rest:
-
-   ```bash
-   kubectl kustomize <ns> \
-     | yq 'select(.metadata.name == "allow-same-namespace" or .metadata.name == "allow-own-node")' \
-     | kubectl apply -f -
-   kubectl apply -k <ns>
-   ```
-
-   A single `kubectl apply -k` creates policies in name order. Any `allow-*` policy that sorts
-   before `allow-same-namespace` isolates its pods first, and the engine drops in-namespace
-   traffic until the rest land (17 ms of dropped Galera and MaxScale packets in `mariadb`).
-   Then run the functional checks and the probe again (green).
+3. `kubectl apply -k <ns>`. The first policy that lands isolates the pods, so traffic the others
+   allow may drop for a few milliseconds until they follow; TCP retries it. Then run the
+   functional checks and the probe again (green).
 
 4. Add `- <ns>` to `kustomization.yaml`.

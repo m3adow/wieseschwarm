@@ -261,6 +261,22 @@ external-dns (wave -1, `sources: [traefik-proxy]`) sees the IngressRoute and cre
 - If the tunnel is ever recreated: update the tunnel token SopsSecret, the table above, and every `external-dns.kubernetes.io/target` annotation (grep for `cfargotunnel.com`). Leave the new tunnel's dashboard routes empty so the git-managed ConfigMap stays authoritative.
 - Reloader restarts the cloudflared pods when the ConfigMap changes; routing edits in git go live on the next ArgoCD sync without manual action.
 
+## Network policies
+
+NetworkPolicies are enforced by the Talos-managed `kube-network-policies` container in `kube-system/kube-flannel` (see `01_infrastructure/kube-network-policies/CLAUDE.md`); Flannel alone enforces nothing. The model is ingress-only and receiver-owned: every namespace except `kube-system`, `default` and `argocd` carries the baseline (`default-deny-ingress`, `allow-same-namespace`, `allow-own-node`), plus one policy per cross-namespace or host source it needs. `argocd` keeps its upstream policies plus a scoped `allow-own-node`. Infra namespaces live in `01_infrastructure/network-policies/<ns>/`; apps keep theirs next to their manifests (`02_applications/demo/networkpolicy-*.yaml` is the reference).
+
+Rules that are easy to get wrong, all detailed in `01_infrastructure/network-policies/CLAUDE.md`:
+
+- Pod selectors inside a NetworkPolicy use `matchExpressions`. The `labels:` transformer rewrites `matchLabels` peers to the app's own name.
+- Select on the labels the pods really carry. An app without the recommended labels (no `labels:` transformer) only has its own, such as `app: <name>`; a selector on `app.kubernetes.io/name` then matches nothing and default-deny cuts the app off.
+- Rules match **pod** ports, not Service ports.
+- kube-apiserver (webhooks, aggregated APIs) and hostNetwork pods are only matchable by the host-source `ipBlock` set.
+- A policy applied by hand before its PR merges gets no ArgoCD tracking annotation if the live object already matches git, because ArgoCD then never syncs it. Check with `kubectl get networkpolicy -A -o json | jq '[.items[] | select(.metadata.annotations["argocd.argoproj.io/tracking-id"] == null)] | length'` (expect 0) and trigger a sync of the app if not.
+
+Verify with `scripts/netpol-probe.sh scripts/netpol-expectations.txt` (expected allow/deny matrix) and `scripts/netpol-coverage.sh` (namespaces missing a baseline).
+
+**New app that needs MariaDB:** add `netpol.wieseschwarm/mariadb-client: "true"` to its `namespace.yaml`.
+
 ## Database provisioning (native MariaDB CRDs)
 
 See `kubernetes/01_infrastructure/mariadb-operator/CLAUDE.md` for the full `Database`, `User`,
