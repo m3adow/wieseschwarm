@@ -40,7 +40,7 @@ since hardcoding them here would be the very leak it looks for:
 
 ```bash
 names=$(ls -d kubernetes/02_applications/apps/*/ | xargs -n1 basename \
-        | grep -vxE 'applications|docs' | paste -sd'|')
+        | grep -vxE 'applications|docs|components' | paste -sd'|')
 git grep -inE "$names"             # content of tracked files
 git ls-files | grep -inE "$names"  # and tracked filenames
 ```
