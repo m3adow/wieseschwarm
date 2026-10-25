@@ -91,7 +91,7 @@ The plan has a NetworkPolicy Task after the Task that wires the Application and 
 1. Rendered selectors: `kubectl kustomize kubernetes/02_applications/apps/<app> | yq 'select(.kind == "NetworkPolicy") | .metadata.namespace + " " + .metadata.name + " " + ([.spec.ingress[]?.from[]?.podSelector // {}] | tojson)'`. Every policy is in `<app>`; no peer shows the app's own name.
 2. Probe lines (`EXPECT <service FQDN with trailing dot> <Service port>`) go into the submodule's `kubernetes/02_applications/apps/netpol-expectations.txt`: `DENY` for every port granted only to specific sources, `ALLOW` for LB ports. Never add app lines to the public `scripts/netpol-expectations.txt`.
 3. Red, then green: `scripts/netpol-probe.sh <(grep -F '.<app>.svc' kubernetes/02_applications/apps/netpol-expectations.txt)` fails every `DENY` line before the policy commit syncs and passes all lines after.
-4. Each granted source still works (URL via Traefik, `up{job="<ServiceMonitor's Service name>"} == 1`, DB connection, LB port), and `kubectl -n kube-system logs ds/kube-flannel -c kube-network-policies --since=10m | grep -i denied` shows nothing for the app's pod IPs.
+4. Each granted source still works (URL via Traefik, `up{job="<ServiceMonitor's Service name>"} == 1`, DB connection, LB port), and `scripts/netpol-denials.sh <RFC3339 time the policies synced>` shows no row with `dstPod="<app>/…"` on any node. Denial lines carry only a packet id, and `logs ds/…` reads a single pod, so a plain `grep -i denied` cannot prove this.
 5. `scripts/netpol-coverage.sh` passes (the namespace has its `default-deny-ingress`).
 
 ## Step 5: Backup prerequisites
