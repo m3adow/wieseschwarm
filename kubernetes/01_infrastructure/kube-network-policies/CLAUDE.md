@@ -15,7 +15,9 @@ only adds what Talos does not: a metrics Service + ServiceMonitor. Alerts live i
   `constants.go`). Check it before a Talos upgrade:
   `talosctl get manifests 05-flannel -o yaml | grep kube-network-policies:`.
 - **Talos exposes no flags.** `--v=2` (one log line per evaluated packet) and no memory limit are
-  fixed. Log volume is filtered in Alloy, if at all.
+  fixed. Unfiltered, the engine was ≈ 90 % of the cluster's pod-log bytes in Loki (1.42 of
+  1.58 GB/day, 2026-10-25), so Alloy drops all of its lines except denials, errors and panics
+  before shipping. See "Debugging a suspected drop".
 - **The container declares no ports.** That is why metrics go through a selector-only headless
   Service: a PodMonitor needs a declared container port and would find nothing.
 
@@ -39,10 +41,20 @@ only adds what Talos does not: a metrics Service + ServiceMonitor. Alerts live i
 ## Debugging a suspected drop
 
 ```bash
-kubectl -n kube-system logs ds/kube-flannel -c kube-network-policies --since=10m | grep -i denied
+scripts/netpol-denials.sh [SINCE_TIME]   # denials per node, source and destination pod
 ```
 
 Metric `kube_network_policies_packet_count{verdict}` counts verdicts per node.
+
+**Loki only has part of the log.** The `extraLogProcessingStages` filter in
+`grafana-alloy/application-grafana-alloy.yaml` keeps only lines matching `denied`, klog
+warnings/errors/fatals and the first line of a `panic`. Stack traces are filtered out; after a
+crash, read them with `kubectl logs --previous` before the container restarts again. A `"Packet denied by ingress policy" id=N` line in Loki shows
+_that_ a node drops traffic, not _which_ flow: source and destination are on the earlier
+`"Evaluating packet"` line, which is filtered out. Get them from the pod logs with
+`scripts/netpol-denials.sh`, which pairs each denial with the last Ingress evaluation of the same
+id. At `--v=2` a pod's log only reaches back 0.5–5.5 h, so do this while
+`KubeNetworkPoliciesDropping` is pending or firing (it fires after 30 min).
 
 ## Emergency: a policy is breaking production
 

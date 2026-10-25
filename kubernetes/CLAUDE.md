@@ -273,7 +273,7 @@ Rules that are easy to get wrong, all detailed in `01_infrastructure/network-pol
 - kube-apiserver (webhooks, aggregated APIs) and hostNetwork pods are only matchable by the host-source `ipBlock` set.
 - A policy applied by hand before its PR merges gets no ArgoCD tracking annotation if the live object already matches git, because ArgoCD then never syncs it. Check with `kubectl get networkpolicy -A -o json | jq '[.items[] | select(.metadata.annotations["argocd.argoproj.io/tracking-id"] == null)] | length'` (expect 0) and trigger a sync of the app if not.
 
-Verify with `scripts/netpol-probe.sh scripts/netpol-expectations.txt` (expected allow/deny matrix) and `scripts/netpol-coverage.sh` (namespaces missing a baseline).
+Verify with `scripts/netpol-probe.sh scripts/netpol-expectations.txt` (expected allow/deny matrix) and `scripts/netpol-coverage.sh` (namespaces missing a baseline). `scripts/netpol-denials.sh [SINCE_TIME]` shows which flows the engine drops, from the live pod logs; Loki only keeps the bare denial lines.
 
 **New app that needs MariaDB:** add `netpol.wieseschwarm/mariadb-client: "true"` to its `namespace.yaml`.
 
