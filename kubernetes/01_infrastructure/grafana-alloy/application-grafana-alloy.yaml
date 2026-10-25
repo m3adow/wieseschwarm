@@ -128,6 +128,13 @@ spec:
         podLogsViaKubernetesApi:
           enabled: true
           collector: alloy-singleton
+          # knp logs every packet (Talos fixes --v=2); keep only denials, errors, panics.
+          # Rendered via tpl: must not contain "{{".
+          extraLogProcessingStages: |
+            stage.match {
+              selector = "{namespace=\"kube-system\", container=\"kube-network-policies\"} !~ \"(?i)denied|^[EWF][0-9]{4} |panic\""
+              action   = "drop"
+            }
 
         applicationObservability:
           enabled: false
