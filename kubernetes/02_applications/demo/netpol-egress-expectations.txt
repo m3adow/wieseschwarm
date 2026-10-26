@@ -1,0 +1,10 @@
+# EXPECT HOST PORT; run: scripts/netpol-egress-probe.sh demo app.kubernetes.io/name=demo kubernetes/02_applications/demo/netpol-egress-expectations.txt
+ALLOW kube-dns.kube-system.svc.cluster.local. 53
+ALLOW demo.demo.svc.cluster.local. 80
+ALLOW mariadb-cluster-maxscale.mariadb.svc.cluster.local. 3306
+DENY kubernetes.default.svc.cluster.local. 443
+DENY traefik.traefik.svc.cluster.local. 443
+DENY argocd-server.argocd.svc.cluster.local. 80
+DENY 192.168.10.1 53
+DENY 192.168.10.11 6443
+DENY github.com 443
