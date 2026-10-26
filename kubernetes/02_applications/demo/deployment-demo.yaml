@@ -29,6 +29,8 @@ spec:
         configmap.reloader.stakater.com/reload: "demo-nginx"
         secret.reloader.stakater.com/reload: "demo-mariadb-user"
     spec:
+      # Never calls the Kubernetes API, so no token for an attacker to take.
+      automountServiceAccountToken: false
       securityContext:
         runAsNonRoot: true
         # nginx uid/gid in nginx:alpine; shared by all containers
