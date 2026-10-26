@@ -39,8 +39,10 @@ Ingress NetworkPolicies for infrastructure namespaces. Enforced by the Talos-man
   The address set exists twice, in `components/baseline` and `argocd/`. A node change updates
   both: `git grep -l '10.244.0.1/32' kubernetes/`.
 - **Rules match pod ports, not Service ports** (the engine evaluates after DNAT).
-- **Exposed LoadBalancer ports get a rule without `from`.** All LB Services use
-  `externalTrafficPolicy: Cluster`, so client IPs are partly masqueraded away.
+- **Exposed LoadBalancer ports get a rule without `from`.** Traefik's LB uses
+  `externalTrafficPolicy: Local`, so its clients keep their own address (the `lan-clients-only`
+  middleware relies on that). The other LB Services use `Cluster`, so their client IPs are partly
+  masqueraded away.
 - **Apps that need a shared infra service opt in with a namespace label**, so this public
   directory never names private apps. Today: `netpol.wieseschwarm/mariadb-client: "true"`
   → MaxScale 3306.

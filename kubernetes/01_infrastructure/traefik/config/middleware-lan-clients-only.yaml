@@ -1,0 +1,13 @@
+---
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: lan-clients-only
+  namespace: traefik
+spec:
+  # Traefik's LB uses externalTrafficPolicy: Local, so LAN clients keep their own address.
+  # Pods (10.244.0.0/16) never match, whichever path they take.
+  ipAllowList:
+    sourceRange:
+      - 192.168.10.0/24
+      - 192.168.67.0/24

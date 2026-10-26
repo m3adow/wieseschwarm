@@ -23,6 +23,8 @@ spec:
         providers:
           kubernetesCRD:
             enabled: true
+            # LAN-only routes in other namespaces reference traefik/lan-clients-only.
+            allowCrossNamespace: true
           kubernetesIngress:
             enabled: true
         service:
@@ -30,6 +32,8 @@ spec:
             metallb.universe.tf/loadBalancerIPs: "192.168.10.40"
           spec:
             type: LoadBalancer
+            # Keeps LAN client IPs (no SNAT); lan-clients-only relies on it.
+            externalTrafficPolicy: Local
         ingressRoute:
           dashboard:
             enabled: true
@@ -37,6 +41,7 @@ spec:
             entryPoints:
               - websecure
             middlewares:
+              - name: lan-clients-only
               - name: traefik-dashboard-basicauth
             tls: {}
         deployment:
