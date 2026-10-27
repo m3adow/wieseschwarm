@@ -1,11 +1,14 @@
 # CLAUDE.md
 
-Ingress NetworkPolicies for infrastructure namespaces. Enforced by the Talos-managed
-`kube-network-policies` (see `../kube-network-policies/CLAUDE.md` for engine behaviour).
+Ingress NetworkPolicies for infrastructure namespaces, plus the baseline components. Enforced by
+the Talos-managed `kube-network-policies` (see `../kube-network-policies/CLAUDE.md` for engine
+behaviour).
 
 ## Model
 
-- Ingress only. Egress is unrestricted.
+- Infra namespaces: ingress only, egress stays open. App namespaces (`demo`, the applications
+  submodule) also deny egress via `components/egress-baseline`; that model is under "Egress (app
+  namespaces only)" in `kubernetes/CLAUDE.md`.
 - The receiving namespace owns its policies. Infra namespaces live here, one directory each;
   application namespaces keep theirs next to the app.
 - Every covered namespace pulls in `components/baseline`: `default-deny-ingress`,
@@ -25,10 +28,10 @@ Ingress NetworkPolicies for infrastructure namespaces. Enforced by the Talos-man
   The kustomize `labels:` transformer with `includeSelectors: true` (used by every app)
   rewrites `podSelector.matchLabels` inside `from`/`to` peers to the app's own name, silently
   pointing the rule at the wrong pods. It does not touch `matchExpressions`.
-- **Every kustomization that pulls in `components/baseline` sets `namespace:`.** The component's
-  policies carry no namespace of their own. Without the field, ArgoCD still places them in the
-  Application's destination namespace, but a `kubectl apply` of the rendered output puts them into
-  `default`.
+- **Every kustomization that pulls in a component from `components/` sets `namespace:`.** The
+  components' policies carry no namespace of their own. Without the field, ArgoCD still places
+  them in the Application's destination namespace, but a `kubectl apply` of the rendered output
+  puts them into `default`.
 - **A pod's own node is always allowed** (`allow-own-node`: the three node IPs and the three cni0
   addresses `10.244.X.1`, all ports). That is the documented NetworkPolicy semantics: an isolated
   pod still accepts connections from its own node. kube-network-policies only exempts packets from
@@ -74,7 +77,8 @@ behaviour can also change it. Re-check with `talosctl netstat -k -t` on a webhoo
 ## Adding a namespace
 
 1. `mkdir <ns>`. Add a `kustomization.yaml` with `namespace: <ns>`,
-   `components: [../components/baseline]`, and any `networkpolicy-allow-*.yaml`.
+   `components: [../components/baseline]`, and any `networkpolicy-allow-*.yaml`. Add `<ns>` to
+   `egress_exempt` in `scripts/netpol-coverage.sh`, or the check flags it for missing egress.
 2. Add a `DENY` line per listener to `scripts/netpol-expectations.txt`. Run
    `scripts/netpol-probe.sh` and confirm the lines are red **before** applying.
 3. `kubectl apply -k <ns>`. The first policy that lands isolates the pods, so traffic the others

@@ -263,7 +263,7 @@ external-dns (wave -1, `sources: [traefik-proxy]`) sees the IngressRoute and cre
 
 ## Network policies
 
-NetworkPolicies are enforced by the Talos-managed `kube-network-policies` container in `kube-system/kube-flannel` (see `01_infrastructure/kube-network-policies/CLAUDE.md`); Flannel alone enforces nothing. The model is ingress-only and receiver-owned: every namespace except `kube-system`, `default` and `argocd` carries the baseline (`default-deny-ingress`, `allow-same-namespace`, `allow-own-node`), plus one policy per cross-namespace or host source it needs. `argocd` keeps its upstream policies plus a scoped `allow-own-node`. Infra namespaces live in `01_infrastructure/network-policies/<ns>/`; apps keep theirs next to their manifests (`02_applications/demo/networkpolicy-*.yaml` is the reference).
+NetworkPolicies are enforced by the Talos-managed `kube-network-policies` container in `kube-system/kube-flannel` (see `01_infrastructure/kube-network-policies/CLAUDE.md`); Flannel alone enforces nothing. Ingress is receiver-owned: every namespace except `kube-system`, `default` and `argocd` carries the baseline (`default-deny-ingress`, `allow-same-namespace`, `allow-own-node`), plus one policy per cross-namespace or host source it needs. `argocd` keeps its upstream policies plus a scoped `allow-own-node`. Infra namespaces live in `01_infrastructure/network-policies/<ns>/`; apps keep theirs next to their manifests (`02_applications/demo/networkpolicy-*.yaml` is the reference).
 
 Rules that are easy to get wrong, all detailed in `01_infrastructure/network-policies/CLAUDE.md`:
 
@@ -273,9 +273,33 @@ Rules that are easy to get wrong, all detailed in `01_infrastructure/network-pol
 - kube-apiserver (webhooks, aggregated APIs) and hostNetwork pods are only matchable by the host-source `ipBlock` set.
 - A policy applied by hand before its PR merges gets no ArgoCD tracking annotation if the live object already matches git, because ArgoCD then never syncs it. Check with `kubectl get networkpolicy -A -o json | jq '[.items[] | select(.metadata.annotations["argocd.argoproj.io/tracking-id"] == null)] | length'` (expect 0) and trigger a sync of the app if not.
 
-Verify with `scripts/netpol-probe.sh scripts/netpol-expectations.txt` (expected allow/deny matrix) and `scripts/netpol-coverage.sh` (namespaces missing a baseline). `scripts/netpol-denials.sh [SINCE_TIME]` shows which flows the engine drops, from the live pod logs; Loki only keeps the bare denial lines.
+Verify with `scripts/netpol-probe.sh scripts/netpol-expectations.txt` (expected allow/deny matrix) and `scripts/netpol-coverage.sh` (namespaces missing `default-deny-ingress`, and app namespaces missing `default-deny-egress`). `scripts/netpol-denials.sh [SINCE_TIME]` shows which flows the engine drops, from the live pod logs; Loki only keeps the bare denial lines.
 
-**New app that needs MariaDB:** add `netpol.wieseschwarm/mariadb-client: "true"` to its `namespace.yaml`.
+**New app that needs MariaDB:** add `netpol.wieseschwarm/mariadb-client: "true"` to its `namespace.yaml`, and an egress policy to MaxScale like `demo/networkpolicy-allow-egress-mariadb.yaml`.
+
+### Egress (app namespaces only)
+
+`demo` and every app in the applications submodule also deny egress. Infra namespaces stay egress-open: `scripts/netpol-coverage.sh` lists them in `egress_exempt`, so a new infra namespace goes there, and a new app namespace fails the check until it has `default-deny-egress`.
+
+- **Baseline:** `01_infrastructure/network-policies/components/egress-baseline/` (submodule copy: `components/networkpolicy-egress-baseline`) holds `default-deny-egress` plus what every app needs: DNS to CoreDNS, the own namespace, and k8up job pods (`k8upjob: "true"`) to the API server on the node IPs (TCP 6443) and to B2 (TCP 443).
+- **One policy per further destination**, `networkpolicy-allow-egress-<destination>.yaml` next to the app's manifests, such as `demo/networkpolicy-allow-egress-mariadb.yaml`.
+- **Internet** comes from the submodule-only component `components/networkpolicy-egress-internet`: TCP 80/443 to `0.0.0.0/0` minus `10.0.0.0/8`, `100.64.0.0/10`, `127.0.0.0/8`, `169.254.0.0/16`, `172.16.0.0/12` and `192.168.0.0/16`, for pods whose template carries `netpol.wieseschwarm/internet: "true"`. Further ports go in a JSON6902 patch in the app's kustomization that appends to `/spec/egress/0/ports`. Pods opt in by label, not by a `podSelector` patch, because a patch whose target matches nothing still builds: the policy would keep `podSelector: {}` and put the whole namespace online, while a missing label only cuts the pod off. No public namespace uses it, hence no public copy.
+- **Every egress policy carries `netpol.wieseschwarm/direction: egress`.** Rollback for one namespace: `kubectl -n <ns> delete networkpolicy -l netpol.wieseschwarm/direction=egress`. ArgoCD re-creates them on its next sync, so for a lasting rollback first remove `spec.syncPolicy.automated` from `applications` and the app's Application, as in the emergency procedure in `01_infrastructure/kube-network-policies/CLAUDE.md`.
+- **Applying ahead of a merge:** apply only objects ArgoCD does not own yet. Re-applying one it owns strips its tracking annotation. For a namespace's first egress rollout that is every egress policy: `kubectl kustomize <dir> | yq 'select(.metadata.labels["netpol.wieseschwarm/direction"] == "egress")' | kubectl apply -f -`.
+
+**Tooling:** `scripts/netpol-egress-inventory.sh <ns-regex> <minutes> <outfile>` (needs `TALOSCONFIG`) samples conntrack on the nodes and lists what a namespace's pods dial. Run it before any egress policy exists: the engine only logs packets of pods some policy selects. `scripts/netpol-egress-probe.sh <ns> <pod-selector> <file>` checks `ALLOW|DENY <host> <port>` lines from an ephemeral container inside the app's pod, so it tests that pod's own policies. Each app keeps its lines in `netpol-egress-expectations.txt`.
+
+### LAN-only routes
+
+A LAN-only IngressRoute (`*.wieseschwarm.lan`) references the `lan-clients-only` Middleware from `01_infrastructure/traefik/config/`:
+
+```yaml
+middlewares:
+  - name: lan-clients-only
+    namespace: traefik
+```
+
+It admits only `192.168.10.0/24` and `192.168.67.0/24` and answers everyone else with 403, pods included, whichever path they take. That relies on Traefik's LoadBalancer Service keeping `externalTrafficPolicy: Local`: with `Cluster`, LAN clients arrive masqueraded to a node address and get locked out. Traefik trusts no forwarded headers, so a spoofed `X-Forwarded-For` changes nothing. Public routes don't use it. To check a route, `curl` it from a short-lived pod (403) and from a LAN client (works); the plan-application skill, Step 4.4, has the commands.
 
 ## Database provisioning (native MariaDB CRDs)
 
@@ -426,6 +450,18 @@ volumeMounts:
 `Enabled` fails the pod if the kernel does not support it. `IfPossible` silently falls back.
 Use `Enabled` for new workloads; `IfPossible` only when the manifest must run on clusters
 without this gate.
+
+## Service account tokens
+
+App pods set `automountServiceAccountToken: false` in the pod template unless they call the
+Kubernetes API; `02_applications/demo/deployment-demo.yaml` is the reference. A mounted token gives
+whoever takes over the pod an authenticated identity at the API server, and the app has no use for
+it. Set it per workload, not on the namespace's `default` ServiceAccount, which Kubernetes creates
+by itself and git does not manage. k8up's job pods keep their token: they exec into the app pods
+through the API.
+
+Check: `kubectl -n <ns> get pod <pod> -o jsonpath='{.spec.volumes[*].name}'` must not list a
+`kube-api-access-*` volume.
 
 ## Secrets (SopsSecret)
 
