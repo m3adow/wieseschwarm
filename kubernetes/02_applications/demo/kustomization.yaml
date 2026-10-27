@@ -17,6 +17,7 @@ labels:
 
 components:
   - ../../01_infrastructure/network-policies/components/baseline
+  - ../../01_infrastructure/network-policies/components/egress-baseline
 
 resources:
   - certificate-demo-public.yaml
@@ -28,6 +29,7 @@ resources:
   - ingressroute-demo-public.yaml
   - namespace.yaml
   - networkpolicy-allow-alloy-metrics.yaml
+  - networkpolicy-allow-egress-mariadb.yaml
   - networkpolicy-allow-traefik.yaml
   - persistentvolumeclaim-demo.yaml
   - prometheusrule-demo.yaml
