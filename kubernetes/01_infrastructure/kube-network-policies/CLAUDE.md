@@ -63,7 +63,8 @@ first:
 
 1. `kubectl -n argocd patch application apps-of-apps --type json -p '[{"op":"remove","path":"/spec/syncPolicy/automated"}]'`
 2. `kubectl -n argocd patch application network-policies --type json -p '[{"op":"remove","path":"/spec/syncPolicy/automated"}]'`
-   (or the affected app's Application, for app-namespace policies)
+   (or the affected app's Application, for app-namespace policies; for a submodule app, pause
+   `applications` first, which self-heals the app's Application)
 3. `kubectl -n <ns> delete networkpolicy <name>` (or `--all`)
 4. Fix it in git via PR, then restore the automation with `make argocd-apps-bootstrap`.
    The root re-syncs every child Application spec, which restores their `automated` blocks.
