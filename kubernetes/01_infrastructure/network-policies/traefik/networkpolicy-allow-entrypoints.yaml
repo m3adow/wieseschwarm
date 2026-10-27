@@ -12,7 +12,7 @@ spec:
           - traefik
   policyTypes:
     - Ingress
-  # No `from`: LAN clients arrive via LB eTP=Cluster (partly masqueraded), plus cloudflared.
+  # No `from`: LAN clients arrive via the LB (eTP=Local, own IPs), cloudflared via the ClusterIP.
   ingress:
     - ports:
         - protocol: TCP

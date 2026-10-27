@@ -10,6 +10,9 @@ spec:
   routes:
     - match: Host(`demo.wieseschwarm.lan`)
       kind: Rule
+      middlewares:
+        - name: lan-clients-only
+          namespace: traefik
       services:
         - name: demo
           port: http

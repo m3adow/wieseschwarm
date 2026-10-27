@@ -12,6 +12,9 @@ spec:
   routes:
     - match: Host(`argocd.wieseschwarm.lan`)
       kind: Rule
+      middlewares:
+        - name: lan-clients-only
+          namespace: traefik
       services:
         - name: argocd-server
           port: 80
