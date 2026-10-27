@@ -12,7 +12,7 @@ exception — it is present as a structural example only and is not exercised.
 | MariaDB CRs     | `database-demo.yaml`, `user-demo.yaml`, `grant-demo.yaml`                                                |
 | K8up backup     | `schedule-demo-k8up.yaml` + `sopssecret-demo-k8up-b2.yaml` (**disabled** — structure only)               |
 | Metrics/alerts  | `servicemonitor-demo.yaml` (scrape config) + `prometheusrule-demo.yaml` (alerts), both via Grafana Alloy |
-| LAN ingress     | `ingressroute-demo-lan.yaml` (`demo.wieseschwarm.lan`, default TLSStore)                                 |
+| LAN ingress     | `ingressroute-demo-lan.yaml` (`demo.wieseschwarm.lan`, default TLSStore, `lan-clients-only`)             |
 | Public ingress  | `ingressroute-demo-public.yaml` (`demo.wieseclan.eu.org` via Cloudflare Tunnel)                          |
 | cert-manager    | `certificate-demo-public.yaml` (Let's Encrypt production)                                                |
 | VPA             | `verticalpodautoscaler-demo.yaml`                                                                        |
@@ -46,6 +46,15 @@ cross-namespace source: `networkpolicy-allow-traefik.yaml` (port 80) and
 The peer pod selectors use `matchExpressions`, not `matchLabels`, because this app's `labels:`
 transformer would rewrite `matchLabels` peers to `demo`. Rules, the host-source set and how to
 add a namespace: `kubernetes/01_infrastructure/network-policies/CLAUDE.md`.
+
+Egress: demo also pulls in `components/egress-baseline` and adds
+`networkpolicy-allow-egress-mariadb.yaml` (MaxScale, TCP 3306). It has no internet access.
+`netpol-egress-expectations.txt` is the template for the apps' files: its `DENY` lines cover the
+API server, other namespaces, the LAN and the internet. Its first line has the probe command.
+
+The pod sets `automountServiceAccountToken: false`, and the LAN route references the
+`lan-clients-only` middleware. Both are the references for new apps; see "Service account tokens"
+and "LAN-only routes" in `kubernetes/CLAUDE.md`.
 
 ## Public exposure
 
