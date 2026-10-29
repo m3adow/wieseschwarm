@@ -32,7 +32,7 @@ RULES_DIR = REPO / "kubernetes/01_infrastructure/grafana-alloy/cluster-rules"
 CRONJOB = AM_DIR.parent / "cronjob-alertmanager-config-sync.yaml"
 
 YQ_IMAGE = "mikefarah/yq:4.54.1"
-AM_IMAGE = "prom/alertmanager:v0.34.1"
+AM_IMAGE = "prom/alertmanager:v0.34.2"
 CAPTURE_PORT = 18099
 SMTP_PORT = 2525
 AM_PORT = 19093
