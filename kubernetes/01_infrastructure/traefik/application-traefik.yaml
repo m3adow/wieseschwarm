@@ -43,6 +43,9 @@ spec:
             asDefault: true
           websecure:
             asDefault: true
+            http:
+              middlewares:
+                - traefik-strip-cf-connecting-ip@kubernetescrd
           tunnel:
             port: 8444
             exposedPort: 8444
@@ -55,6 +58,7 @@ spec:
                 enabled: true
               middlewares:
                 - traefik-strip-client-forwarding@kubernetescrd
+              aliasHeadersStrategy: delete
             # Only cloudflared reaches this port (NetworkPolicy), so its XFF is trusted.
             forwardedHeaders:
               trustedIPs:
@@ -68,8 +72,25 @@ spec:
             spec:
               headers:
                 customRequestHeaders:
+                  # A trusted entrypoint keeps client-sent values; "" deletes them.
                   X-Forwarded-Host: ""
+                  X-Forwarded-Method: ""
+                  X-Forwarded-Port: "443"
+                  X-Forwarded-Prefix: ""
+                  X-Forwarded-Tls-Client-Cert: ""
+                  X-Forwarded-Tls-Client-Cert-Info: ""
+                  X-Forwarded-Uri: ""
                   X-Real-Ip: ""
+          - apiVersion: traefik.io/v1alpha1
+            kind: Middleware
+            metadata:
+              name: strip-cf-connecting-ip
+              namespace: traefik
+            spec:
+              headers:
+                customRequestHeaders:
+                  # Only Cloudflare (via tunnel) may set it; on websecure anyone could.
+                  CF-Connecting-IP: ""
         ingressRoute:
           dashboard:
             enabled: true
