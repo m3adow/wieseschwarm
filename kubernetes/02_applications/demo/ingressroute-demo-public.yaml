@@ -9,6 +9,7 @@ metadata:
 spec:
   entryPoints:
     - websecure
+    - tunnel
   routes:
     - match: Host(`demo.wieseclan.eu.org`)
       kind: Rule

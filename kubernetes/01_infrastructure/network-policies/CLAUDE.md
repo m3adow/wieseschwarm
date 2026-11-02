@@ -46,6 +46,10 @@ behaviour).
   `externalTrafficPolicy: Local`, so its clients keep their own address (the `lan-clients-only`
   middleware relies on that). The other LB Services use `Cluster`, so their client IPs are partly
   masqueraded away.
+- **Only cloudflared reaches Traefik's `tunnel` entrypoint** (container port 8444,
+  `traefik/networkpolicy-allow-cloudflared-tunnel.yaml`). That entrypoint trusts
+  `X-Forwarded-For`, so widening the policy lets any pod forge client IPs for apps that act on
+  them, for example by banning them.
 - **Apps that need a shared infra service opt in with a namespace label**, so this public
   directory never names private apps. Today: `netpol.wieseschwarm/mariadb-client: "true"`
   → MaxScale 3306.

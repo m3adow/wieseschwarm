@@ -8,4 +8,5 @@ components:
   - ../components/baseline
 
 resources:
+  - networkpolicy-allow-cloudflared-tunnel.yaml
   - networkpolicy-allow-entrypoints.yaml

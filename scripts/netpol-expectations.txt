@@ -2,6 +2,7 @@
 # DENY means "listener exists but policy blocks"; prove that with a red run first.
 ALLOW traefik.traefik.svc.cluster.local. 80
 ALLOW traefik.traefik.svc.cluster.local. 443
+DENY traefik-internal.traefik.svc.cluster.local. 8444
 ALLOW argocd-server.argocd.svc.cluster.local. 80
 ALLOW kube-dns.kube-system.svc.cluster.local. 53
 DENY argocd-redis.argocd.svc.cluster.local. 6379
