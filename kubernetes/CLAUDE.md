@@ -215,7 +215,7 @@ Also note `endpoints[].port` refers to the Service's/Pod's **named port** (e.g. 
 
 ## Public exposure (Cloudflare Tunnel + external-dns)
 
-Public internet exposure runs through a Cloudflare Tunnel (`cloudflared`, 2 replicas) to Traefik. Tunnel routing is **git-managed** in the cloudflared ConfigMap: a single wildcard ingress rule (`*.wieseclan.eu.org` → `https://traefik.traefik.svc.cluster.local.:443`, `noTLSVerify: true`) routes everything to Traefik, so per-app exposure never touches the tunnel config.
+Public internet exposure runs through a Cloudflare Tunnel (`cloudflared`, 2 replicas) to Traefik. Tunnel routing is **git-managed** in the cloudflared ConfigMap: a single wildcard ingress rule (`*.wieseclan.eu.org` → `https://traefik-internal.traefik.svc.cluster.local.:8444`, `noTLSVerify: true`) routes everything to Traefik's `tunnel` entrypoint, so per-app exposure never touches the tunnel config.
 
 **Caution:** the tunnel runs with a token, but its remote configuration is empty ("Published application routes" in the Zero Trust dashboard shows none), which is why the local config file applies. Never add routes in the dashboard — a non-empty remote configuration takes precedence and the git-managed ConfigMap would be silently ignored (cloudflare/cloudflared#633).
 
@@ -240,7 +240,7 @@ metadata:
     external-dns.kubernetes.io/target: "0c7f5b3b-6179-4d8a-beff-954e8e87e37c.cfargotunnel.com"
 spec:
   entryPoints:
-    - websecure
+    - tunnel
   routes:
     - match: Host(`<app>.wieseclan.eu.org`)
       kind: Rule
@@ -257,6 +257,8 @@ external-dns (wave -1, `sources: [traefik-proxy]`) sees the IngressRoute and cre
 
 - Only first-level subdomains (`<app>.wieseclan.eu.org`): Cloudflare Universal SSL (Free plan) does not cover deeper levels (`a.b.wieseclan.eu.org`).
 - Any DNS record pointing at the tunnel reaches Traefik; the IngressRoute set is the real exposure gate (no matching route → 404).
+- **The `tunnel` entrypoint trusts `X-Forwarded-For`**, because only the cloudflared pods can reach it (`network-policies/traefik/networkpolicy-allow-cloudflared-tunnel.yaml`). Cloudflare appends the client address to whatever the client sent, and Traefik appends the cloudflared pod's, so the right-most entry before the proxies is the real client: apps behind it may act on it, for example by banning it. The entrypoint deletes client-sent `X-Forwarded-Host` and `X-Real-Ip`; `CF-Connecting-IP` stays available. It is served by the ClusterIP Service `traefik-internal`, not the LoadBalancer.
+- A public route lists only `tunnel`; public hostnames never resolve to the LAN IP, so `websecure` would serve nobody. The public routes that predate the entrypoint still list both.
 - external-dns reads only the `external-dns.kubernetes.io/` annotation prefix (default since v0.22). The old `external-dns.alpha.kubernetes.io/` prefix is silently ignored, and a Traefik IngressRoute without an explicit `target` annotation yields no DNS record. With `policy: sync`, external-dns then deletes the records it owns, so a dropped annotation takes the hostname offline without any error.
 - If the tunnel is ever recreated: update the tunnel token SopsSecret, the table above, and every `external-dns.kubernetes.io/target` annotation (grep for `cfargotunnel.com`). Leave the new tunnel's dashboard routes empty so the git-managed ConfigMap stays authoritative.
 - Reloader restarts the cloudflared pods when the ConfigMap changes; routing edits in git go live on the next ArgoCD sync without manual action.
@@ -299,7 +301,7 @@ middlewares:
     namespace: traefik
 ```
 
-It admits only `192.168.10.0/24` and `192.168.67.0/24` and answers everyone else with 403. That includes pod-network pods via both the LB IP and the ClusterIP (tested from all nodes). hostNetwork pods and node processes are untested: they may arrive with a node address, which lies inside `192.168.10.0/24`. That relies on Traefik's LoadBalancer Service keeping `externalTrafficPolicy: Local`: with `Cluster`, LAN clients arrive masqueraded to a node address and get locked out. Traefik trusts no forwarded headers, so a spoofed `X-Forwarded-For` changes nothing. Public routes don't use it. To check a route, `curl` it from a short-lived pod (403) and from a LAN client (works); the plan-application skill, Step 4.4, has the commands.
+It admits only `192.168.10.0/24` and `192.168.67.0/24` and answers everyone else with 403. That includes pod-network pods via both the LB IP and the ClusterIP (tested from all nodes). hostNetwork pods and node processes are untested: they may arrive with a node address, which lies inside `192.168.10.0/24`. That relies on Traefik's LoadBalancer Service keeping `externalTrafficPolicy: Local`: with `Cluster`, LAN clients arrive masqueraded to a node address and get locked out. `IPAllowList` keys on the peer address, not on `X-Forwarded-For`, so a spoofed header changes nothing. LAN-only routes stay on `websecure` and never list `tunnel`. Public routes don't use the middleware. To check a route, `curl` it from a short-lived pod (403) and from a LAN client (works); the plan-application skill, Step 4.4, has the commands.
 
 ## Database provisioning (native MariaDB CRDs)
 

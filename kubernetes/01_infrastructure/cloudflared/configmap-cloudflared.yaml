@@ -15,12 +15,13 @@ data:
     # ignored (cloudflare/cloudflared#633).
     #
     # The wildcard routes every first-level *.wieseclan.eu.org hostname to
-    # Traefik; per-app exposure is controlled by an IngressRoute plus an
+    # Traefik's `tunnel` entrypoint, which trusts X-Forwarded-For because only
+    # cloudflared reaches it; per-app exposure is controlled by an IngressRoute plus an
     # external-dns annotation -- see "Public exposure" in kubernetes/CLAUDE.md.
     metrics: 0.0.0.0:2000
     ingress:
       - hostname: "*.wieseclan.eu.org"
-        service: https://traefik.traefik.svc.cluster.local.:443
+        service: https://traefik-internal.traefik.svc.cluster.local.:8444
         originRequest:
           noTLSVerify: true
       - service: http_status:404
