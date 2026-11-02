@@ -34,6 +34,42 @@ spec:
             type: LoadBalancer
             # Keeps LAN client IPs (no SNAT); lan-clients-only relies on it.
             externalTrafficPolicy: Local
+          additionalServices:
+            internal:
+              spec:
+                type: ClusterIP
+        ports:
+          web:
+            asDefault: true
+          websecure:
+            asDefault: true
+          tunnel:
+            port: 8444
+            exposedPort: 8444
+            protocol: TCP
+            expose:
+              default: false
+              internal: true
+            http:
+              tls:
+                enabled: true
+              middlewares:
+                - traefik-strip-client-forwarding@kubernetescrd
+            # Only cloudflared reaches this port (NetworkPolicy), so its XFF is trusted.
+            forwardedHeaders:
+              trustedIPs:
+                - 10.244.0.0/16
+        extraObjects:
+          - apiVersion: traefik.io/v1alpha1
+            kind: Middleware
+            metadata:
+              name: strip-client-forwarding
+              namespace: traefik
+            spec:
+              headers:
+                customRequestHeaders:
+                  X-Forwarded-Host: ""
+                  X-Real-Ip: ""
         ingressRoute:
           dashboard:
             enabled: true
