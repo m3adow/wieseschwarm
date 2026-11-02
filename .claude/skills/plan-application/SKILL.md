@@ -59,7 +59,7 @@ components:
 ```
 
 - `networkpolicy-baseline`: `default-deny-ingress`, `allow-same-namespace`, `allow-own-node`.
-- `networkpolicy-egress-baseline`: `default-deny-egress`, DNS to CoreDNS, the own namespace, and k8up job pods to the API server and B2.
+- `networkpolicy-egress-baseline`: `default-deny-egress`, DNS to CoreDNS, the own namespace, and k8up job pods to the API server and to any public address on TCP 443 (for B2).
 
 Both are byte-identical copies of `kubernetes/01_infrastructure/network-policies/components/baseline/` and `.../egress-baseline/`; change each pair together. `components/networkpolicy-egress-internet` (4.3) exists only in the submodule.
 
@@ -94,13 +94,13 @@ The egress baseline already allows DNS, the own namespace and the k8up job pods.
 
 Each egress policy carries the label `netpol.wieseschwarm/direction: egress` and `policyTypes: [Egress]`, follows the selector rules of 4.2 (with `to` in place of `from`), and always has `ports`.
 
-| Destination           | Grant with                                                                                                                                                                                                        |
-| --------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| MariaDB               | `networkpolicy-allow-egress-mariadb.yaml` as in `demo/` (namespace `mariadb` + pod `maxscale`, TCP 3306), plus `netpol.wieseschwarm/mariadb-client: "true"` in `namespace.yaml`, or MaxScale drops the connection |
-| Internet, TCP 80/443  | `../components/networkpolicy-egress-internet` in `components:`, and `netpol.wieseschwarm/internet: "true"` in each pod template that needs it                                                                     |
-| Internet, other ports | the same, plus the patch below                                                                                                                                                                                    |
-| Another namespace     | one policy with `namespaceSelector` + `podSelector` in the same `to` element; that namespace needs a matching ingress rule                                                                                        |
-| A LAN host            | one policy with an `ipBlock` `/32` and its port (the internet component excludes `192.168.0.0/16`)                                                                                                                |
+| Destination           | Grant with                                                                                                                                                                                                                                                                                                 |
+| --------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| MariaDB               | `networkpolicy-allow-egress-mariadb.yaml` as in `demo/` (namespace `mariadb` + pod `maxscale`, TCP 3306). Separately, `netpol.wieseschwarm/mariadb-client: "true"` goes into `namespace.yaml` from the scaffold Task on: MaxScale's ingress rule needs it for the first sync, whatever the egress policies |
+| Internet, TCP 80/443  | `../components/networkpolicy-egress-internet` in `components:`, and `netpol.wieseschwarm/internet: "true"` in each pod template that needs it                                                                                                                                                              |
+| Internet, other ports | the same, plus the patch below                                                                                                                                                                                                                                                                             |
+| Another namespace     | one policy with `namespaceSelector` + `podSelector` in the same `to` element; that namespace needs a matching ingress rule                                                                                                                                                                                 |
+| A LAN host            | one policy with an `ipBlock` `/32` and its port (the internet component excludes `192.168.0.0/16`)                                                                                                                                                                                                         |
 
 More internet ports go in the app's kustomization:
 
@@ -117,7 +117,7 @@ patches:
           port: 587
 ```
 
-Choose pods by the label, never by patching the component's `podSelector`: a patch whose target matches nothing still builds, which would leave `podSelector: {}` and put every pod in the namespace online. A missing label or a missed port patch only cuts traffic off, and the egress probe (4.4) shows it.
+Opt pods in with the label. The component selects on it instead of shipping `podSelector: {}` for apps to narrow by patch, because a patch whose target matches nothing still builds, and `{}` would then put every pod in the namespace online. A missing label or a missed port patch only cuts traffic off, and the egress probe (4.4) shows it.
 
 An app that fetches user-controlled URLs (link previews, webhooks, importers) and gets the internet component can still be pointed at any internet host, though not at the LAN or the cluster. List it under the plan's risks.
 
@@ -131,7 +131,7 @@ The plan has a NetworkPolicy Task after the Task that wires the Application and 
    - Ingress (`EXPECT <service FQDN with trailing dot> <Service port>`) go into the submodule's `kubernetes/02_applications/apps/netpol-expectations.txt`: `DENY` for every port granted only to specific sources, `ALLOW` for LB ports. Never add app lines to the public `scripts/netpol-expectations.txt`.
    - Egress go into `kubernetes/02_applications/apps/<app>/netpol-egress-expectations.txt`. Start from `demo/netpol-egress-expectations.txt` (its header line has the probe command; adjust namespace and pod selector). Add an `ALLOW` per granted destination: with the internet component `ALLOW github.com 443` replaces `DENY github.com 443`, plus `ALLOW` for each patched port and `DENY github.com 22` to prove the port limit.
 4. Red, then green: before the policy commit syncs, `scripts/netpol-probe.sh <(grep -F '.<app>.svc' kubernetes/02_applications/apps/netpol-expectations.txt)` and `scripts/netpol-egress-probe.sh <app> <pod-selector> kubernetes/02_applications/apps/<app>/netpol-egress-expectations.txt` fail every `DENY` line; after it, both pass all lines.
-5. Each granted source and destination still works (URL via Traefik, `up{job="<ServiceMonitor's Service name>"} == 1`, DB connection, LB port, mail, external API), and `scripts/netpol-denials.sh <RFC3339 time the policies synced>` shows no row with `<app>/…` on any node, in either direction. Denial lines carry only a packet id, and `logs ds/…` reads a single pod, so a plain `grep -i denied` cannot prove this.
+5. Each granted source and destination still works (URL via Traefik, `up{job="<ServiceMonitor's Service name>"} == 1`, DB connection, LB port, mail, external API), and `scripts/netpol-denials.sh <RFC3339 time after the last green probe run>` shows no row with `<app>/…` on any node, in either direction. The probes' `DENY` lines are dropped on purpose, so start the window after them and exercise the app inside it. Denial lines carry only a packet id, and `logs ds/…` reads a single pod, so a plain `grep -i denied` cannot prove this.
 6. `scripts/netpol-coverage.sh` passes (the namespace has `default-deny-ingress` and `default-deny-egress`).
 7. No token: `kubectl -n <app> get pods -o jsonpath='{range .items[*]}{.metadata.name}: {.spec.volumes[*].name}{"\n"}{end}'` shows no `kube-api-access-*` volume on the app's pods (k8up job pods keep theirs).
 8. LAN-only route: the URL works from a LAN client and returns 403 from a pod. Run the pod check in a scratch namespace without policies, read the result from the logs, and delete the namespace in the same run. A bare pod older than 10 minutes fires `KubePodWithoutController`, and `kubectl run --rm -i` can attach late and lose the output:
