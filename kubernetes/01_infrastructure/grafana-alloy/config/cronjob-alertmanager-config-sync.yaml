@@ -35,7 +35,7 @@ spec:
             runAsGroup: 65534
           initContainers:
             - name: render
-              image: mikefarah/yq:4.54.1
+              image: mikefarah/yq:4.54.2
               command: [sh, -c]
               args:
                 - >-
