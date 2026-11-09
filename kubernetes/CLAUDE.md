@@ -160,6 +160,8 @@ Each namespace that contains PVCs to back up needs two files:
 
 The Schedule's `backup.podSecurityContext` must run the backup pod as the application's own uid and gid. With k8up's default uid 65532, restic silently skips every file that is not world-readable while the Job still reports success. Details and the reasoning are in `kubernetes/01_infrastructure/k8up/CLAUDE.md`.
 
+Every job block (`backup`, `prune`, `check`) also sets `activeDeadlineSeconds: 1500`. restic's native B2 backend can hang without end, and a hung job holds back every check and prune on its repository; the deadline turns it into a failed Job after 25 minutes. Why 25 minutes and not more is in the same file.
+
 Full YAML templates are in `kubernetes/01_infrastructure/k8up/CLAUDE.md`.
 
 By default, k8up backs up every PVC in the namespace. To exclude a pod's volumes: annotate the pod with `k8up.io/backup: "false"`.

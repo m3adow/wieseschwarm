@@ -156,6 +156,8 @@ If K8up is included, the plan must call out the one-time **manual** prerequisite
 
 The plan must also state the uid and gid the app's pods run as, because the `Schedule` sets `backup.podSecurityContext` to exactly those. Without it, the backup pod runs as k8up's default uid 65532 and silently skips every file that is not world-readable (see `k8up/CLAUDE.md`).
 
+Every job block of the `Schedule` also carries `activeDeadlineSeconds: 1500` (see `k8up/CLAUDE.md`). If the app's first backup will upload more than about 1 GiB, the plan must say so: it needs a longer deadline and a wider gap between the `Schedule`'s jobs.
+
 ## Step 6: VPA is mandatory, and in-place
 
 Every application plan includes a `VerticalPodAutoscaler` with `updateMode: "InPlaceOrRecreate"` — never `Off`, `Initial`, or plain `Recreate` in the final plan. This is a hard requirement for this cluster, not a per-app choice. See `kubernetes/01_infrastructure/vpa/CLAUDE.md` for why in-place-first is the standing convention (resizes live; only evicts when in-place resize isn't possible).
