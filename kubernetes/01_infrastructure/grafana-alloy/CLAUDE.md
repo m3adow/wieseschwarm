@@ -242,7 +242,7 @@ expr=$(yq '.spec.jobTemplate.spec.template.spec.initContainers[0].args[0]' \
   "$d/../cronjob-alertmanager-config-sync.yaml" | sed -E "s/^yq '(.*)' \/config.*/\1/")
 docker run --rm -u "$(id -u)" -v "$PWD/$d:/in:ro" \
   -e TELEGRAM_BOT_TOKEN -e TELEGRAM_CHAT_ID -e SMTP_TO -e SMTP_FROM -e SMTP_USERNAME -e SMTP_PASSWORD -e SMTP_SMARTHOST \
-  mikefarah/yq:4.54.2 "$expr" /in/alertmanager-config.yaml > "$work/rendered.yaml"
+  mikefarah/yq:4.54.3 "$expr" /in/alertmanager-config.yaml > "$work/rendered.yaml"
 docker run --rm -u "$(id -u)" -v "$work:/w:ro" -v "$PWD/$d:/in:ro" -e MIMIR_API_KEY \
   -e MIMIR_ADDRESS=https://alertmanager-prod-eu-west-2.grafana.net -e MIMIR_TENANT_ID=1636417 \
   grafana/mimirtool:3.2.4 alertmanager load /w/rendered.yaml /in/telegram.tmpl

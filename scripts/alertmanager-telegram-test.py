@@ -31,7 +31,7 @@ TEMPLATE = AM_DIR / "telegram.tmpl"
 RULES_DIR = REPO / "kubernetes/01_infrastructure/grafana-alloy/cluster-rules"
 CRONJOB = AM_DIR.parent / "cronjob-alertmanager-config-sync.yaml"
 
-YQ_IMAGE = "mikefarah/yq:4.54.2"
+YQ_IMAGE = "mikefarah/yq:4.54.3"
 AM_IMAGE = "prom/alertmanager:v0.34.2"
 CAPTURE_PORT = 18099
 SMTP_PORT = 2525
