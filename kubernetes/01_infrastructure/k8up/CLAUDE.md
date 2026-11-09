@@ -69,6 +69,8 @@ spec:
         key: account-key
   backup:
     schedule: "0 2 * * *"
+    # Ends a hung restic run; why 25 min: kubernetes/01_infrastructure/k8up/CLAUDE.md
+    activeDeadlineSeconds: 1500
     failedJobsHistoryLimit: 3
     successfulJobsHistoryLimit: 1
     # Read as the app's own uid: k8up's default uid 65532 skips files that are not world-readable.
@@ -77,12 +79,14 @@ spec:
       runAsGroup: <app-gid>
   prune:
     schedule: "0 3 * * 0"
+    activeDeadlineSeconds: 1500
     retention:
       keepLast: 5
       keepDaily: 14
       keepWeekly: 4
   check:
     schedule: "0 4 * * 1"
+    activeDeadlineSeconds: 1500
 ```
 
 `backup` nightly 02:00, `prune` Sunday 03:00 (enforces retention), `check` Monday 04:00 (repo integrity).
@@ -113,6 +117,47 @@ restore pod running as the application's uid cannot create anything in it: resti
 `Summary: Restored N files/dirs` line, never only the status. Use the full resource names
 `backups.k8up.io` and `restores.k8up.io` with `kubectl`: the short name `backups` resolves to
 mariadb-operator's `Backup` type on this cluster.
+
+**`activeDeadlineSeconds: 1500` is required on `backup`, `prune` and `check`.** Without it a hung
+restic run never ends. restic 0.19.1, which k8up v2.16.1 ships, reaches B2 through blazer v0.7.2:
+any connection error on an upload counts as retryable, and blazer retries the same upload URL
+after one second, without limit ([Backblaze/blazer#31](https://github.com/Backblaze/blazer/issues/31)).
+Lock refreshes still succeed, so restic never gives up, and nothing else in the chain has a
+timeout. On 2026-11-09 one application's database-stream backup hung like this for 12 h 45 min:
+stream fully read, no open socket, lock fresh. k8up starts a `check` or `prune` only while no other
+job on the repository is active, so that week's `check` waited behind it, and the only signal was
+`KubeJobNotCompleted` after 12 h. After `kill -QUIT` on restic, k8up's retry finished in 22 s.
+
+When the deadline passes, the Job controller stops the run and marks the Job `Failed`
+(`DeadlineExceeded`). k8up counts that as a failed job: a backup raises `K8upBackupJobFailed`
+(critical) about 5 minutes later, a check or prune `K8upScheduleJobFailed`, and `KubeJobFailed`
+stays until the failed Job is deleted. Nothing needs repair; the next scheduled run retries.
+
+**Why 25 minutes and not more.** A killed run leaves its repository lock behind: the kubelet
+signals k8up, which then kills restic outright (`exec.CommandContext`), so restic never unlocks.
+restic treats a lock as stale only 30 minutes after its last refresh, k8up's `restic unlock`
+before each job removes only stale locks, and k8up never passes `--retry-lock`. The Sunday `prune`
+starts one hour after the backup, so a backup deadline over 30 minutes would hand it a fresh lock
+and fail it as well; 25 minutes leaves the lock at least 35 minutes old. In general, keep a job's
+deadline at least 30 minutes shorter than the gap to its Schedule's next job. 25 minutes is about
+30 times the slowest run seen (apart from the hung one, every job from 2026-10-18 to 2026-11-09
+took 19 to 46 s), but it caps a full upload: 1 GiB needs about 6 Mbit/s upstream. An application
+whose first backup or a prune moves more data needs a longer deadline and a wider gap between its
+jobs.
+
+Keep the deadline once a restic with blazer v0.9.0 or later ships (restic's master branch has it,
+no release as of 2026-11-09). It bounds any other hang as well.
+
+**Why not switch to the `s3` backend.** restic's docs recommend B2's S3-compatible API "due to
+issues with error handling in the current B2 library". Two things stand in the way here: the demo
+failure behind the comment in the template was never diagnosed, and S3 deletes only hide files on
+B2. restic's S3 backend deletes without a version ID, B2 turns that into a delete marker, and the
+hidden versions stay billed. With every bucket on B2's default lifecycle "Keep all versions"
+(checked 2026-11-09), `prune` would free nothing. Switching needs each bucket set to "Keep only
+the last version" first, which is safe because restic writes every file only once, plus a fresh
+test with the demo app. The native backend does delete: it calls `b2_delete_file_version` until
+no version is left, and falls back to hiding only when the key lacks `deleteFiles` (every key has
+it, checked 2026-11-09).
 
 **Add both to the application's `kustomization.yaml`:**
 
