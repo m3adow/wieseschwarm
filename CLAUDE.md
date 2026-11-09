@@ -120,7 +120,8 @@ See `kubernetes/CLAUDE.md` for the full bootstrap procedure and pre-merge checkl
 ## Branch and PR conventions
 
 - Branch naming: `feature/<description>`
-- Merge strategy: merge commits to `main` (no squash)
+- Merge strategy: merge commits to `main`, keeping the branch's whole commit history (no squash, no rebase merge)
+- Branch updates: rebase onto `main` and force-push with `--force-with-lease`; never merge `main` into a feature branch
 - PRs required — no direct pushes to `main`
 - GitHub Actions run pre-commit on all files for every PR
 - Commit messages: plain descriptive, no `feat:`/`fix:` prefixes
