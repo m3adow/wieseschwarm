@@ -28,7 +28,7 @@ spec:
                     app.kubernetes.io/name: cloudflared
       containers:
         - name: cloudflared
-          image: cloudflare/cloudflared:2026.10.7
+          image: cloudflare/cloudflared:2026.11.0
           # Image runs as 65532:65532; a read-only root filesystem is fine
           # since config and token are mounted/injected.
           securityContext:
