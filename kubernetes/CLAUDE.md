@@ -496,7 +496,7 @@ labels:
     includeTemplates: true
 ```
 
-Once the app's `kustomization.yaml` declares this, **do not hand-write `metadata.labels` on individual resource files** — the transformer supplies them everywhere.
+Once the app's `kustomization.yaml` declares this, **do not hand-write `metadata.labels` on individual resource files** — the transformer supplies them everywhere. The one exception is `app.kubernetes.io/component` in an app with more than one workload (see the multi-workload paragraph below).
 
 Selector fields are the exception, and three of them stay explicit on purpose. Kustomize _can_ synthesize `Deployment.spec.selector.matchLabels` and `Service.spec.selector`, but `k8svalidate` and `kube-linter` both validate these files **standalone**, never through a kustomize build:
 
@@ -507,7 +507,7 @@ Selector fields are the exception, and three of them stay explicit on purpose. K
 | `Service.spec.selector`                    | A raw Service with no selector trips `kube-linter`'s `dangling-service`                                                                |
 | `ServiceMonitor`/`PodMonitor` selectors    | `includeSelectors` only rewrites **built-in** GVK selector paths, never CRD ones — kustomize will never synthesize these, built or not |
 
-Declare only `app.kubernetes.io/name` at those sites; the transformer adds the other two. That duplication is intentional and renders to the same value the transformer would produce, so it costs nothing.
+Declare only `app.kubernetes.io/name` at those sites, plus `app.kubernetes.io/component` in an app with more than one workload; the transformer adds the other two. That duplication is intentional and renders to the same value the transformer would produce, so it costs nothing.
 
 `kubernetes/02_applications/demo/` is the reference example — `kustomization.yaml` for the transformer, and `deployment-demo.yaml` / `service-demo.yaml` / `servicemonitor-demo.yaml` for the four explicit sites above.
 
@@ -525,7 +525,9 @@ One trap when re-indenting: shift **every** line of a block scalar by the same a
 
 `kubernetes/02_applications/demo/` was migrated to the transformer and is now the reference example, `SopsSecret` files included. The migration was verified label-neutral by diffing `kubectl kustomize` output before and after: identical for the plain manifests, and for the re-encrypted `SopsSecret` files the only differences were ciphertext churn (`enc`, `mac`, `lastmodified`, and the re-encrypted `stringData` values) with no label lines among them. That diff is the check worth repeating on any similar migration — it is what distinguishes a pure refactor from an accidental change to a live object. Hand-writing labels on every file still works if you find an app doing it, but new apps use the transformer.
 
-**Selectors use `app.kubernetes.io/name` only** — never `/instance` or any other recommended label. `Deployment.spec.selector.matchLabels`, `Service.spec.selector`, and `ServiceMonitor`/`PodMonitor` `spec.selector.matchLabels` (see "Application metrics scraping" above) all key on `app.kubernetes.io/name: <app>` alone; the pod template and every other object's `metadata.labels` still carry the full 3-label set.
+**Selectors use `app.kubernetes.io/name` only** (plus the component in a multi-workload app, next paragraph) — never `/instance` or any other recommended label. `Deployment.spec.selector.matchLabels`, `Service.spec.selector`, and `ServiceMonitor`/`PodMonitor` `spec.selector.matchLabels` (see "Application metrics scraping" above) all key on `app.kubernetes.io/name: <app>` alone; the pod template and every other object's `metadata.labels` still carry the full 3-label set.
+
+**An app with more than one workload adds `app.kubernetes.io/component` to its selectors.** The transformer stamps one `name` on everything in the folder, so the name alone selects the pods of every workload there: a Service would balance across all of them, and a `podSelector`, a VPA target or `kubectl exec deploy/<name>` could reach the wrong pod. Give each workload its own component value (for example `server` and `worker`). Hand-write it under `metadata.labels` of that workload's own objects (Deployment, Service, VPA, PVC) and in its pod template, because the transformer can only stamp one value per folder. Then name it next to `name` in the workload's Deployment and Service selectors, in its `ServiceMonitor`/`PodMonitor` selector, and in every NetworkPolicy `podSelector` that means this one workload. Objects that belong to the app as a whole (ConfigMaps, rules, SopsSecrets) get no component. `/instance` stays out of selectors here too.
 
 **`Deployment.spec.selector.matchLabels` is immutable once the Deployment exists in the cluster.** Setting this correctly from the start (new apps: use `/plan-application`, which does this by default) avoids the problem entirely. Retrofitting labels onto an **already-deployed** app that needs to change its selector requires deleting the live Deployment so ArgoCD recreates it fresh — `kubectl apply`/ArgoCD sync will otherwise fail with an immutable-field error:
 
@@ -533,6 +535,8 @@ One trap when re-indenting: shift **every** line of a block scalar by the same a
 kubectl delete deployment <app> -n <app>
 # then let the next ArgoCD sync recreate it with the new selector
 ```
+
+Adding a second workload to an already-deployed app is such a retrofit: the first workload's selector gains the component. Commands, scripts and probe files that selected its pods by name alone need the component from then on, or they pick either workload's pod.
 
 `Service.spec.selector` is mutable but must keep matching a label the pod template actually carries — update both in the same commit.
 
