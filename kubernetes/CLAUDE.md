@@ -162,6 +162,8 @@ The Schedule's `backup.podSecurityContext` must run the backup pod as the applic
 
 Every job block (`backup`, `prune`, `check`) also sets `activeDeadlineSeconds: 1500`. restic's native B2 backend can hang without end, and a hung job holds back every check and prune on its repository; the deadline turns it into a failed Job after 25 minutes. Why 25 minutes and not more is in the same file.
 
+Every backed-up app also lists the component `restic-read-data-check` from the applications submodule: a monthly CronJob that reads the whole repository back. k8up's `check` never reads a data pack. Why and how: "Monthly read-data check" in `kubernetes/01_infrastructure/k8up/CLAUDE.md`.
+
 Full YAML templates are in `kubernetes/01_infrastructure/k8up/CLAUDE.md`.
 
 By default, k8up backs up every PVC in the namespace. To exclude a pod's volumes: annotate the pod with `k8up.io/backup: "false"`.
@@ -537,6 +539,8 @@ kubectl delete deployment <app> -n <app>
 ```
 
 Adding a second workload to an already-deployed app is such a retrofit: the first workload's selector gains the component. Commands, scripts and probe files that selected its pods by name alone need the component from then on, or they pick either workload's pod.
+
+The monthly read-data check (see "Backups (k8up)") is such a second workload: its pod carries the app's `name` and the component `restic-read-data-check`. So every app with a k8up `Schedule` hand-writes a component on its main workload from the start, `server` unless the app has names of its own. In the applications submodule, `components/restic-read-data-check/check-selectors.sh <app>` lists every selector that would also select the check pod; it must print nothing. `demo` has an inert Schedule and no check, so it still shows the single-workload form.
 
 `Service.spec.selector` is mutable but must keep matching a label the pod template actually carries — update both in the same commit.
 
