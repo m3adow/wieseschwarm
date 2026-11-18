@@ -531,12 +531,18 @@ One trap when re-indenting: shift **every** line of a block scalar by the same a
 
 **An app with more than one workload adds `app.kubernetes.io/component` to its selectors.** The transformer stamps one `name` on everything in the folder, so the name alone selects the pods of every workload there: a Service would balance across all of them, and a `podSelector`, a VPA target or `kubectl exec deploy/<name>` could reach the wrong pod. Give each workload its own component value (for example `server` and `worker`). Hand-write it under `metadata.labels` of that workload's own objects (Deployment, Service, VPA, PVC) and in its pod template, because the transformer can only stamp one value per folder. Then name it next to `name` in the workload's Deployment and Service selectors, in its `ServiceMonitor`/`PodMonitor` selector, and in every NetworkPolicy `podSelector` that means this one workload. Objects that belong to the app as a whole (ConfigMaps, rules, SopsSecrets) get no component. `/instance` stays out of selectors here too.
 
-**`Deployment.spec.selector.matchLabels` is immutable once the Deployment exists in the cluster.** Setting this correctly from the start (new apps: use `/plan-application`, which does this by default) avoids the problem entirely. Retrofitting labels onto an **already-deployed** app that needs to change its selector requires deleting the live Deployment so ArgoCD recreates it fresh — `kubectl apply`/ArgoCD sync will otherwise fail with an immutable-field error:
+**`Deployment.spec.selector.matchLabels` is immutable once the Deployment exists in the cluster.** Setting this correctly from the start (new apps: use `/plan-application`, which does this by default) avoids the problem entirely. Retrofitting labels onto an **already-deployed** app that needs to change its selector requires deleting the live Deployment so ArgoCD recreates it fresh — `kubectl apply`/ArgoCD sync will otherwise fail with an immutable-field error. Do it in this order:
+
+1. Merge while the old Deployment still runs. ArgoCD applies the rest of the change and its sync fails on the Deployment's selector; once its retries are used up, it does not sync that revision again by itself. Wait until `kubectl -n argocd get application <app> -o jsonpath='{.status.operationState.syncResult.revision} {.status.operationState.phase}{"\n"}'` shows the merge commit and `Failed`.
+2. Delete the Deployment and start a sync of the merge commit:
 
 ```bash
 kubectl delete deployment <app> -n <app>
-# then let the next ArgoCD sync recreate it with the new selector
+kubectl -n argocd patch application <app> --type merge \
+  -p '{"operation":{"initiatedBy":{"username":"<you>"},"sync":{"revision":"<merge-sha>"}}}'
 ```
+
+The app is unreachable from the merge until the new pods are ready: its Service already selects the new label, which the old pods do not carry. Do not pause the Application with `argocd.argoproj.io/skip-reconcile` around the merge instead. On 2026-11-18 ArgoCD resumed from its cached pre-merge revision, recreated three Deployments with the old selector, and the apps stayed down until they were deleted and synced again.
 
 Adding a second workload to an already-deployed app is such a retrofit: the first workload's selector gains the component. Commands, scripts and probe files that selected its pods by name alone need the component from then on, or they pick either workload's pod.
 

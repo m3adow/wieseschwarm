@@ -229,18 +229,18 @@ selected via `kube_job_owner{owner_kind="Backup"}`. That owner kind is unique to
 here — mariadb-operator's scheduled backup Jobs are owned by a `CronJob`, not its
 identically-named `Backup` CRD.
 
-| Alert                        | Signal                                             | Fires when                       | Severity |
-| ---------------------------- | -------------------------------------------------- | -------------------------------- | -------- |
-| `K8upBackupStale`            | KSM job completion, `owner_kind=Backup`            | no success in 36h                | critical |
-| `K8upCheckStale`             | KSM job completion, `owner_kind=Check`             | no success in 10d                | warning  |
-| `K8upBackupJobFailed`        | `k8up_jobs_failed_counter{jobType=backup}`         | any failure in 6h                | critical |
-| `K8upScheduleJobFailed`      | `k8up_schedule_last_job_succeeded == 0`            | last check/prune failed          | warning  |
-| `K8upMetricsAbsent`          | `absent(k8up_schedules_gauge)`                     | scrape or operator down          | warning  |
-| `K8upBackupSkippedFiles`     | LogQL on the backup job log (Loki ruler)           | latest backup errors > 0         | warning  |
-| `ResticReadDataCheckStale`   | KSM `kube_cronjob_status_last_successful_time`     | no success in 35d                | warning  |
-| `ResticReadDataCheckMissing` | `k8up_schedules_gauge` without `kube_cronjob_info` | backed-up namespace has no check | warning  |
+| Alert                        | Signal                                         | Fires when                       | Severity |
+| ---------------------------- | ---------------------------------------------- | -------------------------------- | -------- |
+| `K8upBackupStale`            | KSM job completion, `owner_kind=Backup`        | no success in 36h                | critical |
+| `K8upCheckStale`             | KSM job completion, `owner_kind=Check`         | no success in 10d                | warning  |
+| `K8upBackupJobFailed`        | `k8up_jobs_failed_counter{jobType=backup}`     | any failure in 6h                | critical |
+| `K8upScheduleJobFailed`      | `k8up_schedule_last_job_succeeded == 0`        | last check/prune failed          | warning  |
+| `K8upMetricsAbsent`          | `absent(k8up_schedules_gauge)`                 | scrape or operator down          | warning  |
+| `K8upBackupSkippedFiles`     | LogQL on the backup job log (Loki ruler)       | latest backup errors > 0         | warning  |
+| `ResticReadDataCheckStale`   | KSM `kube_cronjob_status_last_successful_time` | no success in 35d                | warning  |
+| `ResticReadDataCheckMissing` | k8up Backup Jobs without `kube_cronjob_info`   | backed-up namespace has no check | warning  |
 
-**Known blind spot:** the two staleness alerts key off retained Job objects.
+**Known blind spot:** `K8upBackupStale` and `K8upCheckStale` key off retained Job objects.
 `successfulJobsHistoryLimit: 1` keeps exactly one successful Job per type, so the series
 persists and the alert keeps firing as intended. But a namespace whose Jobs are all
 deleted, or whose Schedule is removed outright, produces no series and therefore no
@@ -267,14 +267,16 @@ while `restic check --read-data` failed with `ciphertext verification failed`. k
 no field for restic flags.
 
 So every backed-up app also lists the component `restic-read-data-check` (applications submodule,
-"Backup verification" in its `CLAUDE.md`). It adds a CronJob of that name: the 1st of each month at 12:00, the
-official restic image, `restic unlock && restic check --read-data --retry-lock=10m` with the
-namespace's own `k8up-b2` Secret. It downloads and verifies every pack.
+"Backup verification" in its `CLAUDE.md`). It adds a CronJob of that name: the 1st of each month
+at 12:00, the official restic image,
+`restic unlock && exec restic check --read-data --retry-lock=10m` with the namespace's own
+`k8up-b2` Secret. It downloads and verifies every pack. `exec` makes restic PID 1, so the
+deadline's SIGTERM reaches it and it removes its lock.
 
-- **Monthly, at noon on the 1st.** k8up's own `check` still runs every Monday, and a damaged
-  pack goes unnoticed for at most a month. Noon, because the check holds an exclusive lock for as
-  long as it reads, and a k8up job that starts meanwhile fails. k8up's jobs run between 02:00 and
-  04:00.
+- **Monthly, at noon on the 1st.** k8up's own `check` still runs every Monday, and a damaged pack
+  goes unnoticed for at most a month, unless the app reads only a share per run (see "Big
+  repositories"). Noon, because the check holds an exclusive lock for as long as it reads, and a
+  k8up job that starts meanwhile fails. k8up's jobs run between 02:00 and 04:00.
   `startingDeadlineSeconds: 3600` keeps a run missed during an outage from starting late, next to
   the nightly backup. The 25-minute deadline follows the rule above.
 - **`restic unlock` first:** restic refuses an exclusive lock while any lock exists, stale or not,
@@ -291,9 +293,15 @@ namespace's own `k8up-b2` Secret. It downloads and verifies every pack.
   succeeded it counts from the CronJob's creation. `ResticReadDataCheckMissing` covers a namespace
   with k8up schedules and no such CronJob.
 - **Cost:** B2 egress is free up to three times the account's average stored data per month
-  (checked 2026-11-17); a monthly full read is one times the repository, inside the allowance. A
-  repository that takes more than about 12 minutes reads a random share per run instead
-  (`--read-data-subset=25%`, a quarter per run).
+  (checked 2026-11-17); a monthly full read is one times the repository, inside the allowance.
+- **Big repositories:** one that takes more than about 12 minutes reads a random share per run
+  instead (`--read-data-subset=25%`, a quarter per run, plus its own deadline). A random share
+  gives no coverage guarantee: after a year about 3 % of the packs have still never been read.
+  `restic check` also builds a fresh metadata cache (index, snapshots, every tree) in
+  `/tmp/cache`, whatever share it reads. When that outgrows the 1Gi `emptyDir`, the kubelet
+  evicts the pod, which stays `Failed` and raises `PodStuck` (critical). Size the memory limit
+  and the `tmp` `sizeLimit` from one manual run after the app's first backup, and patch them
+  together with the deadline.
 - **Longest run so far:** 30 s (2026-11-18).
 
 **Still not covered:** whether a restore works. Reading every pack proves the data is intact and

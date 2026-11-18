@@ -103,8 +103,10 @@ spec:
               succeeded for {{ $value | humanizeDuration }}. It runs monthly; the data
               in the backup repository is going unverified.
         - alert: ResticReadDataCheckMissing
+          # Backup Jobs, not only the gauge: k8up keeps a deleted Schedule's gauge until it restarts
           expr: |
-            count by (namespace) (k8up_schedules_gauge)
+            count by (namespace) (kube_job_owner{job="integrations/kubernetes/kube-state-metrics", owner_kind="Backup"})
+              and on (namespace) k8up_schedules_gauge
               unless on (namespace)
             kube_cronjob_info{job="integrations/kubernetes/kube-state-metrics", cronjob="restic-read-data-check"}
           for: 1h
@@ -113,6 +115,6 @@ spec:
           annotations:
             summary: "Namespace has k8up backups but no restic read-data check."
             description: >-
-              Namespace {{ $labels.namespace }} has a k8up Schedule but no
+              Namespace {{ $labels.namespace }} runs k8up backups but has no
               restic-read-data-check CronJob, so its backup data is never read back.
               List the component restic-read-data-check in the app's kustomization.
