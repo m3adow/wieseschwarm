@@ -171,6 +171,12 @@ These are the file and object names every application here uses (`demo/schedule-
 `demo/sopssecret-demo-k8up-b2.yaml`), following the repo's `<kind>-<descriptive-name>.yaml`
 convention. The Secret the SopsSecret produces stays plain `k8up-b2`, which the Schedule references.
 
+**Add the monthly read-data check:** list `../components/restic-read-data-check` under
+`components:` in the app's `kustomization.yaml` (applications submodule). It needs nothing else:
+the component copies the bucket from the app's Schedule. Its pod is a second workload in the
+app's folder, so the app's selectors must name `app.kubernetes.io/component` ("Recommended labels"
+in `kubernetes/CLAUDE.md`). `ResticReadDataCheckMissing` fires if a backed-up namespace has no check.
+
 By default, k8up backs up every PVC in the namespace. To exclude a pod's volumes: annotate the pod with `k8up.io/backup: "false"`.
 
 ## Monitoring and alerting
@@ -223,16 +229,18 @@ selected via `kube_job_owner{owner_kind="Backup"}`. That owner kind is unique to
 here — mariadb-operator's scheduled backup Jobs are owned by a `CronJob`, not its
 identically-named `Backup` CRD.
 
-| Alert                    | Signal                                     | Fires when               | Severity |
-| ------------------------ | ------------------------------------------ | ------------------------ | -------- |
-| `K8upBackupStale`        | KSM job completion, `owner_kind=Backup`    | no success in 36h        | critical |
-| `K8upCheckStale`         | KSM job completion, `owner_kind=Check`     | no success in 10d        | warning  |
-| `K8upBackupJobFailed`    | `k8up_jobs_failed_counter{jobType=backup}` | any failure in 6h        | critical |
-| `K8upScheduleJobFailed`  | `k8up_schedule_last_job_succeeded == 0`    | last check/prune failed  | warning  |
-| `K8upMetricsAbsent`      | `absent(k8up_schedules_gauge)`             | scrape or operator down  | warning  |
-| `K8upBackupSkippedFiles` | LogQL on the backup job log (Loki ruler)   | latest backup errors > 0 | warning  |
+| Alert                        | Signal                                         | Fires when                       | Severity |
+| ---------------------------- | ---------------------------------------------- | -------------------------------- | -------- |
+| `K8upBackupStale`            | KSM job completion, `owner_kind=Backup`        | no success in 36h                | critical |
+| `K8upCheckStale`             | KSM job completion, `owner_kind=Check`         | no success in 10d                | warning  |
+| `K8upBackupJobFailed`        | `k8up_jobs_failed_counter{jobType=backup}`     | any failure in 6h                | critical |
+| `K8upScheduleJobFailed`      | `k8up_schedule_last_job_succeeded == 0`        | last check/prune failed          | warning  |
+| `K8upMetricsAbsent`          | `absent(k8up_schedules_gauge)`                 | scrape or operator down          | warning  |
+| `K8upBackupSkippedFiles`     | LogQL on the backup job log (Loki ruler)       | latest backup errors > 0         | warning  |
+| `ResticReadDataCheckStale`   | KSM `kube_cronjob_status_last_successful_time` | no success in 35d                | warning  |
+| `ResticReadDataCheckMissing` | k8up Backup Jobs without `kube_cronjob_info`   | backed-up namespace has no check | warning  |
 
-**Known blind spot:** the two staleness alerts key off retained Job objects.
+**Known blind spot:** `K8upBackupStale` and `K8upCheckStale` key off retained Job objects.
 `successfulJobsHistoryLimit: 1` keeps exactly one successful Job per type, so the series
 persists and the alert keeps firing as intended. But a namespace whose Jobs are all
 deleted, or whose Schedule is removed outright, produces no series and therefore no
@@ -250,8 +258,55 @@ fires while it is above 0; it resolves after the next clean backup. It depends o
 log wording: check it whenever Renovate bumps k8up. A backup that did not run at all logs
 nothing, which `K8upBackupStale` covers.
 
-**Not covered by any of this:** whether a restore actually works. `check` runs plain
-`restic check` with no `--read-data`, so pack contents are never re-hashed. One manual restore
-test has been run (2026-10-15, one application): a fresh snapshot of the volume and of an
-application-aware database dump, restored into a scratch volume, passed the application's own
-integrity checks. There is still no periodic restore drill.
+### Monthly read-data check
+
+k8up's `check` runs plain `restic check`: it compares the index with the list of pack files and
+walks the snapshot trees, but never reads a data pack. Tested 2026-11-17 on a scratch repository
+with eight bytes of one data pack overwritten: `restic check` printed `no errors were found`,
+while `restic check --read-data` failed with `ciphertext verification failed`. k8up's `Check` has
+no field for restic flags.
+
+So every backed-up app also lists the component `restic-read-data-check` (applications submodule,
+"Backup verification" in its `CLAUDE.md`). It adds a CronJob of that name: the 1st of each month
+at 12:00, the official restic image,
+`restic unlock && exec restic check --read-data --retry-lock=10m` with the namespace's own
+`k8up-b2` Secret. It downloads and verifies every pack. `exec` makes restic PID 1, so the
+deadline's SIGTERM reaches it and it removes its lock.
+
+- **Monthly, at noon on the 1st.** k8up's own `check` still runs every Monday, and a damaged pack
+  goes unnoticed for at most a month, unless the app reads only a share per run (see "Big
+  repositories"). Noon, because the check holds an exclusive lock for as long as it reads, and a
+  k8up job that starts meanwhile fails. k8up's jobs run between 02:00 and 04:00.
+  `startingDeadlineSeconds: 3600` keeps a run missed during an outage from starting late, next to
+  the nightly backup. The 25-minute deadline follows the rule above.
+- **`restic unlock` first:** restic refuses an exclusive lock while any lock exists, stale or not,
+  and a k8up job killed by its deadline leaves one. `unlock` removes only locks older than 30
+  minutes. k8up does the same before each of its jobs.
+- **`restartPolicy: OnFailure`:** retries run in the same pod, and after the last one the Job is
+  `Failed` and its pod is deleted. With `Never` the failed pod would stay and raise `PodStuck`
+  (critical) even for a check that passed on its retry.
+- **A second workload in the app's folder:** the `labels:` transformer gives the check pod the
+  app's name, so it differs from the app's own pods only by its component,
+  `restic-read-data-check`. Every selector of the app has to name the app's component.
+- **Alerts:** a failed run is a failed Job, so `KubeJobFailed` (warning) until the Job is deleted.
+  `ResticReadDataCheckStale` covers a check that stopped running; while a CronJob has never
+  succeeded it counts from the CronJob's creation. `ResticReadDataCheckMissing` covers a namespace
+  with k8up schedules and no such CronJob.
+- **Cost:** B2 egress is free up to three times the account's average stored data per month
+  (checked 2026-11-17); a monthly full read is one times the repository, inside the allowance.
+- **Big repositories:** one that takes more than about 12 minutes reads a random share per run
+  instead (`--read-data-subset=25%`, a quarter per run, plus its own deadline). A random share
+  gives no coverage guarantee: after a year about 3 % of the packs have still never been read.
+  `restic check` also builds a fresh metadata cache (index, snapshots, every tree) in
+  `/tmp/cache`, whatever share it reads. When that outgrows the 1Gi `emptyDir`, the kubelet
+  evicts the pod, which stays `Failed` and raises `PodStuck` (critical). Size the memory limit
+  and the `tmp` `sizeLimit` from one manual run after the app's first backup, and patch them
+  together with the deadline.
+- **Longest run so far:** 30 s (2026-11-18).
+
+**Still not covered:** whether a restore works. Reading every pack proves the data is intact and
+that the key and the password open it. It does not prove that the snapshot holds the right files or
+that they come back with usable owners. One manual restore test has been run (2026-10-15, one
+application): a fresh snapshot of the volume and of an application-aware database dump, restored
+into a scratch volume, passed the application's own integrity checks. There is still no periodic
+restore drill.

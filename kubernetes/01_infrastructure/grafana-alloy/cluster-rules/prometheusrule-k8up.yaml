@@ -83,3 +83,38 @@ spec:
               k8up_schedules_gauge has no series at all. Either the k8up operator is
               down or its ServiceMonitor is no longer scraped. Every k8up_* alert is
               blind while this fires.
+        - alert: ResticReadDataCheckStale
+          # created: counts from creation while the CronJob has never succeeded
+          expr: |
+            (
+              time() - max by (namespace) (
+                kube_cronjob_status_last_successful_time{job="integrations/kubernetes/kube-state-metrics", cronjob="restic-read-data-check"}
+                  or
+                kube_cronjob_created{job="integrations/kubernetes/kube-state-metrics", cronjob="restic-read-data-check"}
+              )
+            ) > 3024000
+          for: 30m
+          labels:
+            severity: warning
+          annotations:
+            summary: "restic read-data check has not succeeded in over 35 days."
+            description: >-
+              No restic-read-data-check job in namespace {{ $labels.namespace }} has
+              succeeded for {{ $value | humanizeDuration }}. It runs monthly; the data
+              in the backup repository is going unverified.
+        - alert: ResticReadDataCheckMissing
+          # Backup Jobs, not only the gauge: k8up keeps a deleted Schedule's gauge until it restarts
+          expr: |
+            count by (namespace) (kube_job_owner{job="integrations/kubernetes/kube-state-metrics", owner_kind="Backup"})
+              and on (namespace) k8up_schedules_gauge
+              unless on (namespace)
+            kube_cronjob_info{job="integrations/kubernetes/kube-state-metrics", cronjob="restic-read-data-check"}
+          for: 1h
+          labels:
+            severity: warning
+          annotations:
+            summary: "Namespace has k8up backups but no restic read-data check."
+            description: >-
+              Namespace {{ $labels.namespace }} runs k8up backups but has no
+              restic-read-data-check CronJob, so its backup data is never read back.
+              List the component restic-read-data-check in the app's kustomization.
