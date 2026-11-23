@@ -219,6 +219,8 @@ Reading those two raw files, note that `service-demo.yaml` has **no** `metadata.
 
 Also note `endpoints[].port` refers to the Service's/Pod's **named port** (e.g. `metrics`), not a raw port number.
 
+An app's `PrometheusRule` can also read cluster-standard series from kube-state-metrics, kubelet, cadvisor or node-exporter, but Alloy ships only the metrics on its keep-lists. A rule that reads one not yet listed adds it to that source's `includeMetrics` in `01_infrastructure/grafana-alloy/application-grafana-alloy.yaml`, or the rule never fires. See "Keep-lists" in `01_infrastructure/grafana-alloy/CLAUDE.md`.
+
 ## Public exposure (Cloudflare Tunnel + external-dns)
 
 Public internet exposure runs through a Cloudflare Tunnel (`cloudflared`, 2 replicas) to Traefik. Tunnel routing is **git-managed** in the cloudflared ConfigMap: a single wildcard ingress rule (`*.wieseclan.eu.org` → `https://traefik-internal.traefik.svc.cluster.local.:8444`, `noTLSVerify: true`) routes everything to Traefik's `tunnel` entrypoint, so per-app exposure never touches the tunnel config.

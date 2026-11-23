@@ -322,12 +322,47 @@ not per-source, since `linuxHosts` only has one source (node-exporter).
 **A wrong key here doesn't error — Helm doesn't validate unknown values keys, so the
 config is silently accepted and does nothing.** A `clusterMetrics.metricsTuning` block
 sat in this file for months doing nothing before this was caught (see git history on
-`application-grafana-alloy.yaml` around the `excludeMetrics` block for the incident).
+`application-grafana-alloy.yaml` around the former `excludeMetrics` block for the incident).
 Before trusting either layer, verify the metric actually disappears from Grafana Cloud
 Explore — don't assume from the values file alone.
 
 Relatedly: Alloy/Prometheus relabel regexes are RE2 and fully anchored, not shell globs.
 `go_*` matches only the literal `go_`/`go`/`go__`… — never `go_goroutines`. Use `go_.*`.
+
+## Keep-lists: only what rules read
+
+kube-state-metrics, kubelet, cadvisor and node-exporter (`hostMetrics.linuxHosts`) ship only
+the metrics a PromQL rule reads: `useDefaultAllowList: false` plus an explicit `includeMetrics`
+per source. The chart's default allowlists exist to feed Grafana Cloud's Kubernetes Monitoring
+app, which is not used here. With them the cluster sent about 7,200 billed series against the
+free tier's 10,000; with the keep-lists it sends about 2,000 (2026-11-23). `kubeletResource`
+and `selfReporting` are off for the same reason: no rule reads their series.
+
+**A rule that reads a metric from one of these sources adds it to that source's
+`includeMetrics` in the same change.** That holds for rules in `cluster-rules/` and for an
+application's `PrometheusRule` in the applications submodule alike. A rule on a metric that is
+not kept evaluates against no data and never fires, with no error anywhere: the failure
+`KubeJobFailed` had while `kube_job_failed` was missing from the default allowlist. When a rule
+is removed, drop the metrics only it read.
+
+List the metric names all PromQL rules read, submodule included, from the repository root:
+
+```bash
+git grep --recurse-submodules -l "kind: PrometheusRule" -- kubernetes/ \
+  | xargs yq '.metadata.labels.ruler as $r | select($r != "loki") | .spec.groups[].rules[].expr' \
+  | grep -oE '\b(kube|kubelet|container|node)_[A-Za-z0-9_]+' | sort -u
+```
+
+`node_exporter` in the output is a job label and `kube_network_policies_*` comes from that
+component's own ServiceMonitor; every other name must be in a keep-list.
+
+**Never leave an `includeMetrics` empty.** The chart renders a source's `keep` rule only when
+its allowlist is non-empty, so `useDefaultAllowList: false` with no includes ships every metric
+the source exposes. `up` and `scrape_samples_scraped` are always kept.
+
+ServiceMonitor and PodMonitor sources are outside these lists. Each filters itself with
+`metricRelabelings`: `keep` where the wanted set is fixed, `drop` where the exporter's set is
+open-ended.
 
 ## Extracting more alerts from kube-prometheus-stack later
 
@@ -343,6 +378,7 @@ helm template prometheus-community/kube-prometheus-stack \
 | yq 'select(.kind == "PrometheusRule")'
 ```
 
-Rewrite every `job=` selector per the table above, verify every referenced metric exists
-in Grafana Cloud Explore (adding to `includeMetrics` if not), and drop any `cluster`
-label references from `by`/`on` clauses — this account's series don't carry one.
+Rewrite every `job=` selector per the table above, add every referenced metric to its
+source's `includeMetrics` (see "Keep-lists" above) and verify it arrives in Grafana Cloud
+Explore, and drop any `cluster` label references from `by`/`on` clauses — this account's
+series don't carry one.
