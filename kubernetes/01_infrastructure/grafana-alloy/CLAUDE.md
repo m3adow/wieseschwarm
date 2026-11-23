@@ -364,6 +364,15 @@ ServiceMonitor and PodMonitor sources are outside these lists. Each filters itse
 `metricRelabelings`: `keep` where the wanted set is fixed, `drop` where the exporter's set is
 open-ended.
 
+### Series budget alert
+
+`MetricSeriesBudgetWarning`/`Critical` (`cluster-rules/prometheusrule-series-budget.yaml`)
+count `{__aggregation__=""}`. Grafana Cloud's Adaptive Metrics stores some metrics aggregated,
+and `count()` over such a metric returns the raw series behind it, not the few series billed.
+Counting everything put the alert about 1,100 above billing on 2026-11-23. The billed figure
+itself, `grafanacloud_org_metrics_billable_series` in the `grafanacloud-usage` data source, is
+out of the Mimir ruler's reach. Adaptive Metrics rules live only in Grafana Cloud, not in git.
+
 ## Extracting more alerts from kube-prometheus-stack later
 
 ```bash
