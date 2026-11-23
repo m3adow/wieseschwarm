@@ -80,6 +80,7 @@ spec:
   prune:
     schedule: "0 3 * * 0"
     activeDeadlineSeconds: 1500
+    successfulJobsHistoryLimit: 1
     retention:
       keepLast: 5
       keepDaily: 14
@@ -87,9 +88,16 @@ spec:
   check:
     schedule: "0 4 * * 1"
     activeDeadlineSeconds: 1500
+    successfulJobsHistoryLimit: 1
 ```
 
 `backup` nightly 02:00, `prune` Sunday 03:00 (enforces retention), `check` Monday 04:00 (repo integrity).
+
+**`successfulJobsHistoryLimit: 1` on every job block.** k8up keeps three successful Jobs per type
+by default, and every retained Job and its Pod keep kube-state-metrics series alive in Grafana
+Cloud. Until 2026-11-23 only `backup` set the limit; 48 retained Jobs then held about 1,300 of
+the 7,200 billed series. `K8upBackupStale` and `K8upCheckStale` need only the latest successful
+Job. `failedJobsHistoryLimit` is left at k8up's default of 3.
 
 **`backup.podSecurityContext` is required.** Set `runAsUser` and `runAsGroup` to the uid and gid
 the application's pods run as (their `securityContext.runAsUser`/`runAsGroup`). Without it, the

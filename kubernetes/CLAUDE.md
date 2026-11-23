@@ -162,6 +162,8 @@ The Schedule's `backup.podSecurityContext` must run the backup pod as the applic
 
 Every job block (`backup`, `prune`, `check`) also sets `activeDeadlineSeconds: 1500`. restic's native B2 backend can hang without end, and a hung job holds back every check and prune on its repository; the deadline turns it into a failed Job after 25 minutes. Why 25 minutes and not more is in the same file.
 
+Every job block also sets `successfulJobsHistoryLimit: 1`. k8up keeps three successful Jobs per type by default, and each one keeps metric series alive in Grafana Cloud.
+
 Every backed-up app also lists the component `restic-read-data-check` from the applications submodule: a monthly CronJob that reads the whole repository back. k8up's `check` never reads a data pack. Why and how: "Monthly read-data check" in `kubernetes/01_infrastructure/k8up/CLAUDE.md`.
 
 Full YAML templates are in `kubernetes/01_infrastructure/k8up/CLAUDE.md`.
