@@ -162,6 +162,8 @@ The Schedule's `backup.podSecurityContext` must run the backup pod as the applic
 
 Every job block (`backup`, `prune`, `check`) also sets `activeDeadlineSeconds: 1500`. restic's native B2 backend can hang without end, and a hung job holds back every check and prune on its repository; the deadline turns it into a failed Job after 25 minutes. Why 25 minutes and not more is in the same file.
 
+Every job block also sets `successfulJobsHistoryLimit: 1`. k8up keeps three successful Jobs per type by default, and each one keeps metric series alive in Grafana Cloud.
+
 Every backed-up app also lists the component `restic-read-data-check` from the applications submodule: a monthly CronJob that reads the whole repository back. k8up's `check` never reads a data pack. Why and how: "Monthly read-data check" in `kubernetes/01_infrastructure/k8up/CLAUDE.md`.
 
 Full YAML templates are in `kubernetes/01_infrastructure/k8up/CLAUDE.md`.
@@ -216,6 +218,8 @@ To onboard an app that exposes a Prometheus-format `/metrics` endpoint, add a `S
 Reading those two raw files, note that `service-demo.yaml` has **no** `metadata.labels` block at all — the app's `kustomization.yaml` `labels:` transformer supplies it at build time (see "Recommended labels" below). So "the Service must carry `metadata.labels`" is a statement about built output, not about the file on disk. Check with `kubectl kustomize --enable-helm kubernetes/02_applications/demo`, not by eye.
 
 Also note `endpoints[].port` refers to the Service's/Pod's **named port** (e.g. `metrics`), not a raw port number.
+
+An app's `PrometheusRule` can also read cluster-standard series from kube-state-metrics, kubelet, cadvisor or node-exporter, but Alloy ships only the metrics on its keep-lists. A rule that reads one not yet listed adds it to that source's `includeMetrics` in `01_infrastructure/grafana-alloy/application-grafana-alloy.yaml`, or the rule never fires. See "Keep-lists" in `01_infrastructure/grafana-alloy/CLAUDE.md`.
 
 ## Public exposure (Cloudflare Tunnel + external-dns)
 

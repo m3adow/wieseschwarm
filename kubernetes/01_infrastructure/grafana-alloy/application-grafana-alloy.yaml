@@ -56,40 +56,55 @@ spec:
               usernameKey: username-loki
               passwordKey: password
 
-        # useDefaultAllowList keeps active series ~3k-5k on this cluster — this is
-        # already the chart default for every individual source below, not something
-        # this file needs to set explicitly. Never disable a source's allowlist
-        # without measuring series count first.
-        #
         # metricsTuning is scoped per SOURCE on this feature — there is no top-level
         # clusterMetrics.metricsTuning key in the chart's schema, so we go per-source.
-        # go_goroutines/rest_client_requests_total are only on kubelet's default
-        # allowlist (cadvisor's and kube-state-metrics' don't include them at all),
-        # so kubelet.metricsTuning is the only place this exclusion belongs.
+        # Each source ships only what PromQL rules read; see this dir's CLAUDE.md.
+        # Never empty an includeMetrics: with no keep-list the chart ships every metric.
         clusterMetrics:
           enabled: true
           collector: alloy-metrics
-          # No rule in cluster-rules/ references these; they cost ~2.5k of ~8.2k series.
-          # Re-add individually when a rule or dashboard needs one.
+          kubeletResource:
+            enabled: false
           kube-state-metrics:
             metricsTuning:
-              useDefaultAllowList: true
-              # KubeJobFailed reads this; it is not on the chart's default allowlist,
-              # so without it the alert evaluates against no data and never fires.
+              useDefaultAllowList: false
               includeMetrics:
+                - "kube_cronjob_created"
+                - "kube_cronjob_info"
+                - "kube_cronjob_status_last_successful_time"
+                - "kube_daemonset_status_current_number_scheduled"
+                - "kube_daemonset_status_desired_number_scheduled"
+                - "kube_daemonset_status_number_available"
+                - "kube_daemonset_status_number_misscheduled"
+                - "kube_daemonset_status_updated_number_scheduled"
+                - "kube_deployment_spec_replicas"
+                - "kube_deployment_status_replicas_available"
+                - "kube_deployment_status_replicas_updated"
                 - "kube_job_failed"
-              excludeMetrics:
-                - "kube_deployment_status_condition"
-                - "kube_pod_container_info"
-                - "kube_pod_restart_policy"
-                - "kube_pod_status_reason"
-                - "kube_replicaset_.*"
+                - "kube_job_owner"
+                - "kube_job_status_active"
+                - "kube_job_status_completion_time"
+                - "kube_job_status_start_time"
+                - "kube_node_status_condition"
+                - "kube_pod_container_status_last_terminated_reason"
+                - "kube_pod_container_status_restarts_total"
+                - "kube_pod_owner"
+                - "kube_pod_status_phase"
+                - "kube_statefulset_replicas"
+                - "kube_statefulset_status_replicas_ready"
+                - "kube_statefulset_status_replicas_updated"
           kubelet:
             metricsTuning:
-              useDefaultAllowList: true
-              excludeMetrics:
-                - "go_.*"
-                - "rest_client_.*" # kube-apiserver client latency histograms with high cardinality
+              useDefaultAllowList: false
+              includeMetrics:
+                - "kubelet_volume_stats_capacity_bytes"
+                - "kubelet_volume_stats_used_bytes"
+          cadvisor:
+            metricsTuning:
+              useDefaultAllowList: false
+              includeMetrics:
+                - "container_cpu_usage_seconds_total"
+                - "container_network_transmit_bytes_total"
 
         # node-exporter is a SEPARATE feature from clusterMetrics — clusterMetrics has
         # no node-exporter source at all (it only covers kubelet/cadvisor/apiServer/
@@ -101,16 +116,17 @@ spec:
           linuxHosts:
             enabled: true
             metricsTuning:
-              useDefaultAllowList: true
+              useDefaultAllowList: false
               includeMetrics:
-                # NodeFilesystemAlmostOutOfSpace / NodeFileDescriptorLimit / NodeClockNotSynchronising
-                - "node_filesystem_avail_bytes"
-                - "node_filesystem_size_bytes"
-                - "node_filesystem_readonly"
-                - "node_timex_sync_status"
-                - "node_timex_maxerror_seconds"
                 - "node_filefd_allocated"
                 - "node_filefd_maximum"
+                - "node_filesystem_avail_bytes"
+                - "node_filesystem_readonly"
+                - "node_filesystem_size_bytes"
+                - "node_memory_MemAvailable_bytes"
+                - "node_memory_MemTotal_bytes"
+                - "node_timex_maxerror_seconds"
+                - "node_timex_sync_status"
 
         # Discovers ServiceMonitor/PodMonitor CRDs cluster-wide (no namespace/label
         # filter — every app in this homelab is trusted to declare its own monitor).
@@ -141,6 +157,8 @@ spec:
         profiling:
           enabled: false
         costMetrics:
+          enabled: false
+        selfReporting:
           enabled: false
 
         telemetryServices:
