@@ -19,8 +19,9 @@ references). All three share one disk layout and one `LinstorSatelliteConfigurat
 
 wieseschwarm-2 used to be inverted (OS on its NVMe, pool on its SATA SSD) and had its own
 hostname-selected config. It was moved to SATA because its firmware cannot boot Talos from that
-NVMe. Its pool is smaller than the other two, which does not matter while it only holds diskless
-tiebreakers.
+NVMe. Its pool is much smaller than the other two (238 GiB against 1.86 TiB), so it holds few
+diskful replicas: on 2026-11-27 it had 2, against 16 on each of the other nodes. For most volumes
+it carries a diskless tiebreaker, or a diskless replica when a pod on node 2 uses the volume.
 
 See `talos/CLAUDE.local.md` for exact disk models and sizes.
 
@@ -43,11 +44,11 @@ LINSTOR.
 `piraeus-replicated` is the cluster default (`is-default-class: true`):
 
 - `storagePool: pool1` — references the pool name configured above
-- `placementCount: "2"` — each volume gets two DRBD replicas across distinct nodes. This is a
-  deliberate capacity/durability tradeoff: only two nodes contribute storage, and DRBD adds a
-  diskless tiebreaker on the third node so quorum survives a single node failure. For data that
-  must survive rebuilding a storage node, add a second StorageClass with `placementCount: "3"`
-  once a third storage node exists.
+- `placementCount: "2"` — each volume gets two diskful DRBD replicas on distinct nodes, and
+  LINSTOR adds a diskless tiebreaker on the third node so quorum survives a single node failure.
+  This is a deliberate capacity/durability tradeoff. All three nodes contribute storage, so a
+  second StorageClass with `placementCount: "3"` is possible for data that must keep two copies
+  while a node is down or being rebuilt. Node 2's 238 GiB pool caps what such a class can hold.
 - `volumeBindingMode: WaitForFirstConsumer` — PVC binding is deferred until a pod is scheduled,
   so LINSTOR can co-locate the primary replica with the consumer pod
 
