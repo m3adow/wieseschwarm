@@ -131,6 +131,8 @@ current status before upgrading Kubernetes.
 
 **Port 2381 is open to the LAN on purpose.** It serves only `/metrics` and `/health`, over plain HTTP without authentication, on every node interface. Anyone on `192.168.10.0/24`, or on a network routed to it, can read etcd's metrics (request rates, database size, leader state), but no keys or values: etcd's data stays behind client certificates on port 2379. Closing 2381 would need the Talos ingress firewall, which this cluster does not use. Accepted on 2026-11-27.
 
+**A change to `cluster.etcd` takes effect only when etcd restarts.** `apply-config --mode=no-reboot` succeeds and the node's `EtcdSpec` shows the new value at once, but Talos never restarts etcd on its own, and etcd reads its flags only at start. Talos's docs prescribe a reboot (`talosctl -n <ip> reboot`). `talosctl -n <ip> service etcd restart` would restart only the member, but it has not been tried here. Either way, do one node at a time, the leader last. Check the result with `talosctl -n <ip> service etcd` (start time) and `curl http://<ip>:2381/metrics`.
+
 ## Upgrading Talos on this hardware
 
 Use the `talos-upgrader` agent, one node at a time. The rollouts to v1.14.4 (October 2026) and v1.14.7 (November 2026) established these rules:
