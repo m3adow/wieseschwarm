@@ -20,6 +20,7 @@ resources:
 
   # Wave 2 — operators and config that only need core K8s resources
   - 01_infrastructure/cert-manager/config/application-cert-manager-config.yaml
+  - 01_infrastructure/etcd-metrics/application-etcd-metrics.yaml
   - 01_infrastructure/grafana-alloy/application-grafana-alloy.yaml
   - 01_infrastructure/grafana-alloy/application-grafana-alloy-rules.yaml
   - 01_infrastructure/grafana-alloy/config/application-grafana-alloy-config.yaml

@@ -1,0 +1,27 @@
+---
+apiVersion: discovery.k8s.io/v1
+kind: EndpointSlice
+metadata:
+  name: etcd-metrics
+  namespace: kube-system
+  labels:
+    kubernetes.io/service-name: etcd-metrics
+    endpointslice.kubernetes.io/managed-by: argocd
+addressType: IPv4
+ports:
+  - name: metrics
+    port: 2381
+    protocol: TCP
+endpoints:
+  - addresses: ["192.168.10.11"]
+    nodeName: wieseschwarm-1
+    conditions:
+      ready: true
+  - addresses: ["192.168.10.12"]
+    nodeName: wieseschwarm-2
+    conditions:
+      ready: true
+  - addresses: ["192.168.10.13"]
+    nodeName: wieseschwarm-3
+    conditions:
+      ready: true
