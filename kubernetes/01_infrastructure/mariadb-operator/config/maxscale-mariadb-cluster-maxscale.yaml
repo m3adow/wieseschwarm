@@ -5,7 +5,7 @@ metadata:
   name: mariadb-cluster-maxscale
   namespace: mariadb
 spec:
-  image: mariadb/maxscale:23.08.13
+  image: mariadb/maxscale:24.02.9
 
   mariaDbRef:
     name: mariadb-cluster
