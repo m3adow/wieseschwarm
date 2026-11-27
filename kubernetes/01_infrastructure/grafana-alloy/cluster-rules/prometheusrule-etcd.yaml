@@ -1,0 +1,28 @@
+---
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: etcd
+  namespace: monitoring
+  labels:
+    app.kubernetes.io/part-of: grafana-alloy
+spec:
+  groups:
+    - name: etcd
+      rules:
+        - alert: EtcdHighFsyncDurations
+          # Threshold and duration as in the upstream etcd mixin (etcdHighFsyncDurations).
+          expr: |
+            histogram_quantile(0.99,
+              sum by (node, le) (rate(etcd_disk_wal_fsync_duration_seconds_bucket{job="etcd-metrics"}[5m]))
+            ) > 0.5
+          for: 10m
+          labels:
+            severity: warning
+          annotations:
+            summary: "etcd on {{ $labels.node }} is slow to write its log."
+            description: >-
+              The 99th percentile of etcd's WAL fsync on {{ $labels.node }} has been
+              {{ $value | humanizeDuration }} for 10 minutes (threshold 0.5 s). Slow fsync
+              costs etcd its leader and stalls the API server. See "etcd metrics" in
+              talos/CLAUDE.md.

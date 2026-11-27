@@ -39,6 +39,9 @@ cluster:
   scheduler:
     extraArgs:
       feature-gates: InPlacePodVerticalScaling=true
-  # etcd:
-  #   advertisedSubnets: # listenSubnets defaults to advertisedSubnets if not set explicitly
-  #     - <cluster-subnet/CIDR>
+  etcd:
+    # Plain-HTTP metrics on every interface, open to the LAN on purpose; see talos/CLAUDE.md.
+    extraArgs:
+      listen-metrics-urls: http://0.0.0.0:2381
+    # advertisedSubnets: # listenSubnets defaults to advertisedSubnets if not set explicitly
+    #   - <cluster-subnet/CIDR>

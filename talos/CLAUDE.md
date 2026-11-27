@@ -125,6 +125,12 @@ current status before upgrading Kubernetes.
 
 **`UserNamespacesSupport` requires a matching sysctl, or the feature gate is silently non-functional.** Talos defaults `user.max_user_namespaces` to `0`; with the gate enabled but this unset, any pod setting `spec.hostUsers: false` fails pod sandbox creation with `failed to start noop process for unshare: fork/exec /proc/self/exe: no space left on device` — a Linux kernel `ENOSPC` quirk for hitting a `max_*_namespaces` ceiling, not an actual disk-space problem. `wieseschwarm-all-patch.yaml` sets `machine.sysctls.user.max_user_namespaces: "11255"` (Talos's own recommended value) alongside the gate. This bug can stay latent indefinitely — it only surfaces the first time a pod actually sets `hostUsers: false`.
 
+## etcd metrics
+
+`wieseschwarm-all-patch.yaml` sets `cluster.etcd.extraArgs.listen-metrics-urls: http://0.0.0.0:2381`, the method Talos documents for exposing etcd's metrics. `kubernetes/01_infrastructure/etcd-metrics/` points Alloy at it, and `EtcdHighFsyncDurations` (`grafana-alloy/cluster-rules/prometheusrule-etcd.yaml`) warns when a member's WAL `fsync` stays slow. Added 2026-11-27, after drains pushed `fsync` on the slow system SSDs of nodes 1 and 3 to 9 s (see "Upgrading Talos on this hardware").
+
+**Port 2381 is open to the LAN on purpose.** It serves only `/metrics` and `/health`, over plain HTTP without authentication, on every node interface. Anyone on `192.168.10.0/24`, or on a network routed to it, can read etcd's metrics (request rates, database size, leader state), but no keys or values: etcd's data stays behind client certificates on port 2379. Closing 2381 would need the Talos ingress firewall, which this cluster does not use. Accepted on 2026-11-27.
+
 ## Upgrading Talos on this hardware
 
 Use the `talos-upgrader` agent, one node at a time. The rollouts to v1.14.4 (October 2026) and v1.14.7 (November 2026) established these rules:
