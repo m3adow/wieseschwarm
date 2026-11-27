@@ -127,7 +127,7 @@ current status before upgrading Kubernetes.
 
 ## Upgrading Talos on this hardware
 
-Use the `talos-upgrader` agent, one node at a time. The last rollout (v1.13.3 to v1.14.4, October 2026) established these rules:
+Use the `talos-upgrader` agent, one node at a time. The rollouts to v1.14.4 (October 2026) and v1.14.7 (November 2026) established these rules:
 
 - **Cold-boot every node after an upgrade or a fresh install.** Both end in a kexec, which never goes through the firmware, so a node can run fine while being unable to boot. That hid wieseschwarm-2's NVMe boot hang for months. Shut down, power on, then compare the boot source:
 
@@ -140,7 +140,11 @@ Use the `talos-upgrader` agent, one node at a time. The last rollout (v1.13.3 to
   Matching UUIDs mean the firmware booted that disk. The variable survives a kexec, so the check only proves something right after a power cycle. Remove any USB stick before testing: the firmware may boot it first.
 
 - **`--image` with the factory `metal-installer` URL is mandatory.** The default installer has no drbd extension.
-- **Upgrade the diskless node first, then the storage nodes one at a time.** Wait for every LINSTOR resource to be `UpToDate` before the next node.
+- **Upgrade the node with the fewest diskful replicas first, then the others one at a time.** Before touching any node again, the cold boot included, wait until every LINSTOR resource is `UpToDate` on every node. Read the row of each node: a `SyncTarget(x%)` that does not move between two checks is a hung resync, see "After a node reboot" in `kubernetes/01_infrastructure/piraeus/CLAUDE.md`.
+- **Gate Galera on its members, not on the `MariaDB` CR.** While a node is cordoned, the member it hosted stays `Pending` (required anti-affinity), so the CR reports `Ready=False` until the node is back. Go on when the other two members are 2/2 and the primary has moved off the drained node. See "Placement" in `kubernetes/01_infrastructure/mariadb-operator/CLAUDE.md`.
+- **Expect a short API blip when a node leaves or rejoins etcd.** etcd shares the system SSD with container images and logs, and the SSDs of nodes 1 and 3 are slow. On 2026-11-27 the extra I/O of drains and pod restarts pushed `fdatasync` to 9 s, etcd lost its leader for about 20 s, and a dozen controllers (LINSTOR, Piraeus operator, k8up, kube-controller-manager) restarted after losing their leader lease. Each blip healed within about 2 minutes, without data loss.
+- **Talos uncordons the node itself**, after `talosctl upgrade` and after a cold boot, even if you drained it with `kubectl drain` first.
+- **Drained pods do not move back.** After the canary, the other two nodes carry its workloads on top of their own, which adds I/O on their system SSDs. Taking the busiest node next moves the load onto the freshly upgraded canary.
 - **`gen config` takes its defaults from the client, not the cluster.** Any client whose default Kubernetes release differs from the running one changes the control-plane images: the v1.14.2 client writes 1.37.1. Applying such a config upgrades Kubernetes node by node, outside `upgrade-k8s`. Always pass `--talos-version` and the running `--kubernetes-version`, as the examples above do.
 - **After the rollout, apply the regenerated config with `--mode=no-reboot`.** Upgrades change what runs, not the declared `machine.install.image`.
 

@@ -99,15 +99,15 @@ Do NOT proceed until explicit confirmation is received. If the user asks questio
 
 - Upgrade control plane nodes first, one at a time, waiting for each to become healthy before proceeding.
 - Upgrade worker nodes after all control plane nodes are healthy.
-- On this cluster, upgrade the node without diskful DRBD replicas first as the canary, then the storage nodes one at a time.
+- On this cluster, upgrade the node with the fewest diskful DRBD replicas first as the canary, then the other nodes one at a time.
 - For each node:
-  1. `talosctl upgrade` drains the node itself with a 5-minute timeout. If the node runs many PDB-protected pods (Galera members, MaxScale), drain it first with `kubectl drain <node> --ignore-daemonsets --delete-emptydir-data --timeout=20m`.
+  1. `talosctl upgrade` drains the node itself with a 5-minute timeout. If the node runs many PDB-protected pods (Galera members, MaxScale), drain it first with `kubectl drain <node> --ignore-daemonsets --delete-emptydir-data --timeout=20m`. The Galera member it hosted then stays `Pending` until the node is back, so gate on the other two members being 2/2, not on the `MariaDB` CR being Ready.
   2. Run: `talosctl upgrade --nodes <node-ip> --image <installer-image> --wait --debug`
   3. Monitor the upgrade: `talosctl dmesg --follow --nodes <node-ip>` until reboot completes
   4. Verify the node is back: `talosctl version --nodes <node-ip>`
   5. Verify Kubernetes node status: `kubectl get node <node-name>`
   6. Verify etcd health after each control plane upgrade
-  7. On storage nodes, wait until every LINSTOR resource is `UpToDate` again before touching the next node.
+  7. Wait until every LINSTOR resource is `UpToDate` on every node before touching any node again, the cold boot included. Check the row of each node: a `SyncTarget(x%)` that does not move between two checks is a hung resync (see "After a node reboot" in `kubernetes/01_infrastructure/piraeus/CLAUDE.md`).
   8. Cold-boot the node (`talosctl shutdown`, then power on) and confirm it booted from its own disk. See "Upgrading Talos on this hardware" in `talos/CLAUDE.md`. The upgrade's own reboot is a kexec that never goes through the firmware, so a healthy node after `talosctl upgrade` is no evidence that it can boot.
   9. Report status before proceeding to the next node
 
@@ -135,6 +135,7 @@ Do NOT proceed until explicit confirmation is received. If the user asks questio
 ## Behavioral Rules
 
 - **Never assume** the cluster state — always verify with live commands.
+- **Put a hard limit on every wait.** Wrap each poll loop in `timeout <secs>`, give each `kubectl` call `--request-timeout`, and report the state when the limit hits. Before waiting on a gate, check that it can pass at all in the current state.
 - **Never invent extension versions** — if you cannot confirm a compatible version exists, say so explicitly.
 - **Challenge easy paths**: if the upgrade seems straightforward, double-check why — large version jumps, Kubernetes compatibility, or unusual extensions may introduce hidden complexity.
 - **Flag the XY problem**: if the user asks to upgrade but their actual problem might be a different issue (e.g., a bug that's already fixed in their current version), raise this.
