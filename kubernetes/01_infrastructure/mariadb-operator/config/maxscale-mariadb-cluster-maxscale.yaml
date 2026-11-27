@@ -12,6 +12,18 @@ spec:
 
   replicas: 2
 
+  # Not antiAffinityEnabled: that also keeps MaxScale off MariaDB nodes (5 nodes needed).
+  affinity:
+    podAntiAffinity:
+      requiredDuringSchedulingIgnoredDuringExecution:
+        - labelSelector:
+            matchExpressions:
+              - key: app.kubernetes.io/instance
+                operator: In
+                values:
+                  - mariadb-cluster-maxscale
+          topologyKey: kubernetes.io/hostname
+
   services:
     - name: rw-router
       router: readwritesplit

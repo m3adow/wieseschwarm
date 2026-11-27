@@ -18,6 +18,9 @@ spec:
 
   replicas: 3
 
+  affinity:
+    antiAffinityEnabled: true
+
   updateStrategy:
     # init/agent follow the floating 26.x chart; each operator release rolls the pods.
     autoUpdateDataPlane: true
