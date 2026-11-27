@@ -39,6 +39,18 @@ line. Set `updateStrategy.mariadbAutoUpgradeEnabled: true` before or together wi
 or the system schema is not migrated and queries on the migrated system tables fail, logical
 backups included.
 
+## Placement
+
+Every Galera member and every MaxScale pod runs on a node of its own (required pod
+anti-affinity). Without it, a drain on 2026-11-27 left two Galera members, the primary among them,
+on one node, where a hard crash would have cost Galera its quorum. MaxScale uses its own rule
+rather than `antiAffinityEnabled`, which would also keep it off the MariaDB nodes and need five.
+
+With three nodes for three members, a Galera member evicted by a drain has nowhere to go: it stays
+`Pending` until its node is uncordoned, and Galera runs on two members meanwhile. The PDB
+(`minAvailable: 50%`) then blocks the next eviction, so a second drain waits. Drain one node at a
+time and let the member rejoin (`Synced`, cluster size 3) before the next.
+
 ## Stale status after node drains
 
 When a node drain evicts a Galera member, the `MariaDB` CR can stay at `Ready=False`
