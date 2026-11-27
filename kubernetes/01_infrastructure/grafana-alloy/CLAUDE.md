@@ -373,6 +373,31 @@ Counting everything put the alert about 1,100 above billing on 2026-11-23. The b
 itself, `grafanacloud_org_metrics_billable_series` in the `grafanacloud-usage` data source, is
 out of the Mimir ruler's reach. Adaptive Metrics rules live only in Grafana Cloud, not in git.
 
+## etcd scrape
+
+etcd is a Talos host service, not a pod. Talos serves its metrics on port 2381 of every node (see
+"etcd metrics" in `talos/CLAUDE.md`). The `alloy-metrics` collector scrapes it from its own
+`extraConfig` in `application-grafana-alloy.yaml`:
+
+- **Targets:** `discovery.kubernetes` (role `node`) keeps nodes labelled
+  `node-role.kubernetes.io/control-plane`, sets the address to `<InternalIP>:2381` and adds a
+  `node` label. A new or re-addressed control-plane node is picked up without an edit.
+- **Scrape:** `prometheus.scrape` sets `job_name = "etcd-metrics"`, which `EtcdHighFsyncDurations`
+  (`cluster-rules/prometheusrule-etcd.yaml`) selects on, and uses clustering like the chart's own
+  scrapes.
+- **Keep-list:** `prometheus.relabel` keeps `up`, the WAL-fsync and backend-commit histograms, and
+  the leader and failed-proposal series, about 115 series in all. It forwards to
+  `prometheus.remote_write.grafana_cloud_metrics`, the chart's component for the
+  `grafana-cloud-metrics` destination, so the series carry the same `cluster` labels as everything
+  else. Should a chart update rename that component, Alloy rejects the config at load time and
+  logs the error, rather than dropping the data without a trace.
+
+**Why not a ServiceMonitor:** a Service without a selector needs a hand-written EndpointSlice, and
+Argo CD excludes EndpointSlices and Endpoints cluster-wide. The first attempt (PR #432) showed
+Synced and Healthy while the EndpointSlice never reached the cluster.
+
+Check: `up{job="etcd-metrics"}` shows three series at 1.
+
 ## Extracting more alerts from kube-prometheus-stack later
 
 ```bash
