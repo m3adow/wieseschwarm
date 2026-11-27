@@ -17,6 +17,28 @@ chart is installed, the controller crashes on startup because `k8s.mariadb.com/v
 exist in the API server yet. Wave 0 ensures CRDs are registered before the wave-1 operator pod
 starts.
 
+## Upgrades
+
+**Images are pinned in git.** `spec.image` on the `MariaDB` and `MaxScale` CRs must stay set. Left
+out, the operator's webhook writes its default once at creation and nothing ever bumps it: the
+server sat on 11.8.5 and MaxScale on 23.08.5 from June to November 2026, invisible to Renovate.
+Pinned, Renovate auto-merges their minor and patch updates, and each merge rolls the pods.
+
+**The data plane follows the operator.** Both charts float on `26.x`, so ArgoCD installs every 26.x
+release without a PR. `updateStrategy.autoUpdateDataPlane: true` keeps the Galera pods' `init` and
+`agent` containers on the operator's version, so every operator release also rolls the Galera pods
+(replicas first, primary last). Without the flag they stayed on 26.3.0 while the operator reached
+26.10.2, although the 26.10.0 upgrade guide required the update. Upstream's guides
+(`docs/releases/UPGRADE_<version>.md` in `mariadb-operator/mariadb-operator`) can demand other
+steps that an unattended upgrade skips; read them first when the operator misbehaves after one.
+
+**Major server versions are manual.** Renovate opens them on `renovate/mariadb-cluster-*` branches,
+kept apart from the demo app's `mariadb` client image by a `packageRule`. It proposes the newest
+major, which may be a short-lived rolling release (13.0 was EOL after three months); stay on an LTS
+line. Set `updateStrategy.mariadbAutoUpgradeEnabled: true` before or together with the image bump,
+or the system schema is not migrated and queries on the migrated system tables fail, logical
+backups included.
+
 ## Stale status after node drains
 
 When a node drain evicts a Galera member, the `MariaDB` CR can stay at `Ready=False`

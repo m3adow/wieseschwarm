@@ -101,6 +101,18 @@
       "prBodyNotes": [
         "Full changelog: https://github.com/piraeusdatastore/piraeus-operator/releases"
       ]
+    },
+    {
+      "description": "Galera server image: own branch, so its majors never share the demo's renovate/mariadb-<major>.x PR",
+      "matchFileNames": [
+        "kubernetes/01_infrastructure/mariadb-operator/config/**"
+      ],
+      "matchDepNames": ["mariadb"],
+      "additionalBranchPrefix": "mariadb-cluster-",
+      "commitMessageSuffix": "for the Galera cluster",
+      "prBodyNotes": [
+        "A major version needs `updateStrategy.mariadbAutoUpgradeEnabled: true` first, and prefer an LTS line. See `kubernetes/01_infrastructure/mariadb-operator/CLAUDE.md`, \"Upgrades\"."
+      ]
     }
   ]
 }

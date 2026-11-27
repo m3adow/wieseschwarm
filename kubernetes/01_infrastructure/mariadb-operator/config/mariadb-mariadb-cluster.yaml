@@ -5,6 +5,9 @@ metadata:
   name: mariadb-cluster
   namespace: mariadb
 spec:
+  # Pinned so Renovate tracks it; the operator's default applies only at creation.
+  image: mariadb:11.8.9
+
   rootPasswordSecretKeyRef:
     name: mariadb-credentials
     key: rootPassword
@@ -14,6 +17,10 @@ spec:
     size: 5Gi
 
   replicas: 3
+
+  updateStrategy:
+    # init/agent follow the floating 26.x chart; each operator release rolls the pods.
+    autoUpdateDataPlane: true
 
   galera:
     enabled: true
