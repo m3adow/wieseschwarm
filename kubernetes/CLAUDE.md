@@ -75,13 +75,13 @@ make argocd-password        # Print initial admin password
 
 Wave annotations control ArgoCD rollout order within a sync operation. **Infrastructure Applications use negative waves so that user Applications with no sync-wave annotation deploy last** — ArgoCD defaults to wave 0, which is after all infrastructure.
 
-| Wave | Current occupants                                                                                                                                                                                                                         | Purpose                                                  |
-| ---- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------- |
-| -4   | `argocd`, `mariadb-operator-crds`, `prometheus-operator-crds`                                                                                                                                                                             | ArgoCD self-upgrade + CRD-only installs; processed first |
-| -3   | `cert-manager`, `metallb`, `mariadb-operator`, `piraeus`, `sops-secrets-operator`, `vpa`                                                                                                                                                  | CRD-providing operators; wave -2 config depends on them  |
-| -2   | `cert-manager-config`, `metallb-config`, `traefik`, `reloader`, `reflector`, `k8up`, `kube-network-policies`, `etcd-metrics`, `mariadb-operator-config`, `metrics-server`, `grafana-alloy`, `grafana-alloy-rules`, `grafana-alloy-config` | Operators/config that only need core K8s resources       |
-| -1   | `traefik-config`, `cloudflared`, `external-dns`                                                                                                                                                                                           | Finalize + config needing wave -2 resources              |
-| 0    | all user-facing applications (default; no annotation needed)                                                                                                                                                                              | Applications deploy after all infrastructure             |
+| Wave | Current occupants                                                                                                                                                                                                                                       | Purpose                                                  |
+| ---- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------- |
+| -4   | `argocd`, `mariadb-operator-crds`, `prometheus-operator-crds`                                                                                                                                                                                           | ArgoCD self-upgrade + CRD-only installs; processed first |
+| -3   | `cert-manager`, `metallb`, `mariadb-operator`, `piraeus`, `sops-secrets-operator`, `vpa`                                                                                                                                                                | CRD-providing operators; wave -2 config depends on them  |
+| -2   | `cert-manager-config`, `metallb-config`, `traefik`, `reloader`, `reflector`, `k8up`, `kube-network-policies`, `etcd-metrics`, `csi-rclone`, `mariadb-operator-config`, `metrics-server`, `grafana-alloy`, `grafana-alloy-rules`, `grafana-alloy-config` | Operators/config that only need core K8s resources       |
+| -1   | `traefik-config`, `cloudflared`, `external-dns`                                                                                                                                                                                                         | Finalize + config needing wave -2 resources              |
+| 0    | all user-facing applications (default; no annotation needed)                                                                                                                                                                                            | Applications deploy after all infrastructure             |
 
 **Rule of thumb:** Helm chart installs at wave N, their Kustomize config at wave N+1. New applications need no sync-wave annotation — the ArgoCD default of wave 0 guarantees they land after all infrastructure waves.
 
@@ -145,8 +145,23 @@ All Helm values are currently inlined in Application specs (`spec.sources[].helm
 | MariaDB Galera Cluster                                        | `mariadb`               |
 | kube-network-policies (metrics only; engine is Talos-managed) | `kube-system`           |
 | etcd-metrics (scrape config only; etcd is Talos-managed)      | `kube-system`           |
+| rclone CSI driver                                             | `csi-rclone`            |
 
 All Applications use `CreateNamespace=true`; ArgoCD creates namespaces on-demand.
+
+## Storage
+
+Two StorageClasses exist. `piraeus-replicated` keeps application data on the nodes' own disks.
+`rclone` mounts a folder of a remote storage, here a folder on a WebDAV server, for files that
+must also be reachable outside the cluster; that data never lives in the cluster. A volume of
+class `rclone` comes with rules of its own: one remote name per PVC, `fsGroup` equal to
+`runAsUser`, `ReadWriteOncePod`, credentials rotated new-first, a liveness probe on the mount,
+and excluded from k8up, which an admission policy enforces. All of them, with their reasons,
+are in `kubernetes/01_infrastructure/csi-rclone/CLAUDE.md`.
+
+**A PVC whose size the driver ignores requests `1Mi`.** The API demands a value, and a token one
+does not pretend to be a capacity or a quota. Today that is every PVC of class `rclone`;
+`piraeus-replicated` volumes keep their real size.
 
 ## Backups (k8up)
 

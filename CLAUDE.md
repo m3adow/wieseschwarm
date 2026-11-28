@@ -128,11 +128,12 @@ See `kubernetes/CLAUDE.md` for the full bootstrap procedure and pre-merge checkl
 
 ## Custom skills and agents
 
-Five skills in `.claude/skills/`:
+Six skills in `.claude/skills/`:
 
 | Skill                | Purpose                                                                                 |
 | -------------------- | --------------------------------------------------------------------------------------- |
 | `add-infra-app`      | Guided walkthrough for adding a new infrastructure component to `01_infrastructure/`    |
+| `csi-rclone-upgrade` | Supervised upgrade, rollback or restart of the rclone CSI driver; the user merges       |
 | `plan-application`   | Guided walkthrough for planning a new user-facing application in `02_applications/apps` |
 | `talos-regen-apply`  | Regenerate Talos control plane config and apply to all nodes                            |
 | `validate-manifests` | Build manifests with kustomize and run yamllint + k8svalidate                           |
