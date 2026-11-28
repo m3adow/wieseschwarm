@@ -5,3 +5,5 @@ kind: Kustomization
 resources:
   - servicemonitor-csi-rclone.yaml
   - storageclass-rclone.yaml
+  - validatingadmissionpolicy-rclone-pvc-no-k8up.yaml
+  - validatingadmissionpolicybinding-rclone-pvc-no-k8up.yaml

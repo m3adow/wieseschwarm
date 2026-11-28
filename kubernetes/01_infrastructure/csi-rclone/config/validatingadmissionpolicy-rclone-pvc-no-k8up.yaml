@@ -1,0 +1,27 @@
+---
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingAdmissionPolicy
+metadata:
+  name: rclone-pvc-no-k8up
+spec:
+  # Ignore: a broken policy must never block PVC writes cluster-wide.
+  failurePolicy: Ignore
+  matchConstraints:
+    resourceRules:
+      - apiGroups: [""]
+        apiVersions: ["v1"]
+        operations: ["CREATE", "UPDATE"]
+        resources: ["persistentvolumeclaims"]
+  matchConditions:
+    - name: storageclass-rclone
+      expression: has(object.spec.storageClassName) && object.spec.storageClassName == "rclone"
+  validations:
+    # A PVC in deletion passes, or its finalizer could never be removed.
+    - expression: >-
+        has(object.metadata.deletionTimestamp) ||
+        (has(object.metadata.annotations) &&
+        "k8up.io/backup" in object.metadata.annotations &&
+        object.metadata.annotations["k8up.io/backup"] == "false")
+      message: >-
+        A PVC of StorageClass rclone needs the annotation k8up.io/backup: "false".
+        See kubernetes/01_infrastructure/csi-rclone/CLAUDE.md, "Backups".
