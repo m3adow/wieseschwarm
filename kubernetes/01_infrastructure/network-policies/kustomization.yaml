@@ -6,6 +6,7 @@ resources:
   - argocd
   - cert-manager
   - cloudflared
+  - csi-rclone
   - external-dns
   - k8up
   - mariadb

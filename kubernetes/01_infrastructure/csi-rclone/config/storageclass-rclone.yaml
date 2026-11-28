@@ -1,0 +1,20 @@
+---
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: rclone
+provisioner: rclone.csi.veloxpack.io
+# Retain: upstream #64 may turn DeleteVolume into a real delete.
+reclaimPolicy: Retain
+volumeBindingMode: Immediate
+# Secret only: remote, remotePath, configData. Here only: cache-dir (process-global).
+parameters:
+  csi.storage.k8s.io/node-publish-secret-name: "${pvc.annotations['rclone.csi.veloxpack.io/secret-name']}"
+  csi.storage.k8s.io/node-publish-secret-namespace: "${pvc.namespace}"
+mountOptions:
+  - vfs-cache-mode=writes
+  - vfs-cache-max-size=2G
+  - dir-cache-time=30s
+  - cache-dir=/var/lib/rclone-cache
+  - mount_type=mount2
+  - allow_idmap=true
