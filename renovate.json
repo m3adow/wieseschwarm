@@ -103,6 +103,15 @@
       ]
     },
     {
+      "description": "rclone CSI driver: a driver restart breaks every running mount, never upgrade unattended",
+      "matchDepNames": ["ghcr.io/veloxpack/charts/csi-driver-rclone"],
+      "automerge": false,
+      "prBodyNotes": [
+        "Merge by hand, supervised by the `csi-rclone-upgrade` skill: restarting the driver breaks the mounts of every running consumer until those pods are restarted.",
+        "Full changelog: https://github.com/veloxpack/csi-driver-rclone/releases"
+      ]
+    },
+    {
       "description": "Galera server image: own branch, so its majors never share the demo's renovate/mariadb-<major>.x PR",
       "matchFileNames": [
         "kubernetes/01_infrastructure/mariadb-operator/config/**"
