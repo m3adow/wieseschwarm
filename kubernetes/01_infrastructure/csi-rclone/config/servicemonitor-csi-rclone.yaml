@@ -1,0 +1,19 @@
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: csi-rclone
+  namespace: csi-rclone
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/component: node-metrics
+      app.kubernetes.io/name: csi-driver-rclone
+  endpoints:
+    - port: metrics
+      interval: 60s
+      metricRelabelings:
+        # ~76 series per node: keep the rules' inputs, plus 403 for diagnosis.
+        - sourceLabels: [__name__, code]
+          regex: "csi_driver_vfs_(uploads_queued_total|disk_cache_errored_files_total|disk_cache_out_of_space);|rclone_http_status_code;(401|403|429)"
+          action: keep
