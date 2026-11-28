@@ -1,0 +1,64 @@
+---
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: csi-rclone
+  namespace: monitoring
+  labels:
+    app.kubernetes.io/part-of: grafana-alloy
+spec:
+  groups:
+    - name: csi-rclone
+      rules:
+        - alert: RcloneUploadsStuck
+          expr: |
+            csi_driver_vfs_uploads_queued_total > 0
+              or csi_driver_vfs_disk_cache_errored_files_total > 0
+              or csi_driver_vfs_disk_cache_out_of_space == 1
+          for: 30m
+          labels:
+            severity: warning
+          annotations:
+            summary: "rclone CSI: writes are not reaching the remote."
+            description: >-
+              Remote {{ $labels.remote_name }} (driver pod {{ $labels.pod }}) has had queued
+              or failed uploads, or a full write cache, for 30 minutes. See
+              kubernetes/01_infrastructure/csi-rclone/CLAUDE.md.
+        # The controller's rclone container holds no mounts.
+        - alert: RcloneDriverRestarted
+          expr: |
+            increase(
+              kube_pod_container_status_restarts_total{
+                namespace="csi-rclone", pod=~"csi-rclone-node-.+", container="rclone"
+              }[10m]
+            ) > 0
+          labels:
+            severity: warning
+          annotations:
+            summary: "rclone CSI driver restarted: its node's mounts are stale."
+            description: >-
+              The rclone container of {{ $labels.pod }} restarted. Every consumer mount on
+              that node fails until the consumer pods are restarted. This alert clears after ten
+              minutes; the mounts do not. See
+              kubernetes/01_infrastructure/csi-rclone/CLAUDE.md.
+        # Born with the first refusal: a new series alerts too.
+        - alert: RcloneLoginRefused
+          expr: |
+            sum by (pod, host, code) (
+              increase(rclone_http_status_code{code=~"401|429"}[10m])
+            ) > 0
+              or sum by (pod, host, code) (
+                rclone_http_status_code{code=~"401|429"}
+                  unless present_over_time(
+                    rclone_http_status_code{code=~"401|429"}[1h] offset 10m
+                  )
+              ) > 0
+          labels:
+            severity: warning
+          annotations:
+            summary: "rclone CSI: the remote refuses the driver's logins."
+            description: >-
+              {{ $labels.host }} answered driver pod {{ $labels.pod }} with HTTP
+              {{ $labels.code }}. A wrong or revoked password gets the driver on all nodes
+              locked out within a few requests. See
+              kubernetes/01_infrastructure/csi-rclone/CLAUDE.md.

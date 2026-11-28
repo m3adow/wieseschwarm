@@ -10,6 +10,7 @@ resources:
   - prometheusrule-cluster-node-exporter.yaml
   - prometheusrule-cluster-nodes.yaml
   - prometheusrule-cluster-pods.yaml
+  - prometheusrule-csi-rclone.yaml
   - prometheusrule-etcd.yaml
   - prometheusrule-external-dns.yaml
   - prometheusrule-k8up.yaml

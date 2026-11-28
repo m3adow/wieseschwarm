@@ -128,11 +128,12 @@ See `kubernetes/CLAUDE.md` for the full bootstrap procedure and pre-merge checkl
 
 ## Custom skills and agents
 
-Five skills in `.claude/skills/`:
+Six skills in `.claude/skills/`:
 
 | Skill                | Purpose                                                                                 |
 | -------------------- | --------------------------------------------------------------------------------------- |
 | `add-infra-app`      | Guided walkthrough for adding a new infrastructure component to `01_infrastructure/`    |
+| `csi-rclone-upgrade` | Supervised upgrade, rollback or restart of the rclone CSI driver; the user merges       |
 | `plan-application`   | Guided walkthrough for planning a new user-facing application in `02_applications/apps` |
 | `talos-regen-apply`  | Regenerate Talos control plane config and apply to all nodes                            |
 | `validate-manifests` | Build manifests with kustomize and run yamllint + k8svalidate                           |
@@ -149,12 +150,13 @@ Two agents in `.claude/agents/`:
 
 `renovate.json` auto-bumps Helm chart versions in Application specs, container image tags, pre-commit hook revisions, and the pinned upstream manifests listed below. Minor and patch updates (`packageRules` automerge entry) are auto-merged via GitHub's native auto-merge once required status checks pass — this includes Helm chart bumps, so a passing CI run does not guarantee wave-ordering or values compatibility was considered. Major updates still open as regular PRs requiring manual review and merge.
 
-Two dependencies are exempt from auto-merge at any update type:
+Three dependencies are exempt from auto-merge at any update type:
 
-| Dependency                          | Why                                                                                                                                         |
-| ----------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
-| `siderolabs/talos`                  | Merging changes only the declared installer tag. Nodes keep running the old version until a rolling upgrade via the `talos-upgrader` agent. |
-| `piraeusdatastore/piraeus-operator` | Replicated storage. CI never exercises DRBD, so green checks are not evidence the bump is safe.                                             |
+| Dependency                                   | Why                                                                                                                                         |
+| -------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
+| `siderolabs/talos`                           | Merging changes only the declared installer tag. Nodes keep running the old version until a rolling upgrade via the `talos-upgrader` agent. |
+| `piraeusdatastore/piraeus-operator`          | Replicated storage. CI never exercises DRBD, so green checks are not evidence the bump is safe.                                             |
+| `ghcr.io/veloxpack/charts/csi-driver-rclone` | Restarting the driver breaks the mount of every running consumer until those pods restart. Upgrade with the `csi-rclone-upgrade` skill.     |
 
 Six things need explicit configuration because Renovate would otherwise miss them:
 

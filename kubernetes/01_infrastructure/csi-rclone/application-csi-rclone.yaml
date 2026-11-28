@@ -1,0 +1,54 @@
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: csi-rclone
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "-2"
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  sources:
+    - repoURL: ghcr.io/veloxpack/charts
+      chart: csi-driver-rclone
+      targetRevision: "0.5.1"
+      helm:
+        releaseName: csi-rclone
+        values: |
+          # Chart default 5 logs every gRPC request.
+          controller:
+            logLevel: 2
+          node:
+            logLevel: 2
+            cache:
+              enabled: true
+              hostPath: /var/lib/rclone-cache
+            metrics:
+              enabled: true
+              service:
+                enabled: true
+            resources:
+              rclone:
+                limits:
+                  # One process holds all mounts of a node.
+                  memory: 512Mi
+    - repoURL: git@github.com:m3adow/wieseschwarm.git
+      targetRevision: main
+      path: kubernetes/01_infrastructure/csi-rclone/config
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: csi-rclone
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    managedNamespaceMetadata:
+      labels:
+        # FUSE mounts need privileged, hostNetwork and hostPath
+        pod-security.kubernetes.io/enforce: privileged
+        pod-security.kubernetes.io/audit: privileged
+        pod-security.kubernetes.io/warn: privileged
+    syncOptions:
+      - CreateNamespace=true

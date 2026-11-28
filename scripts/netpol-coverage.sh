@@ -4,7 +4,7 @@ set -euo pipefail
 
 exempt='^(kube-system|default|argocd|netpol-probe|netpol-storage-check)$'
 # Infra namespaces stay egress-open; only app namespaces restrict egress.
-egress_exempt='^(kube-system|default|argocd|cert-manager|cloudflared|external-dns|k8up|mariadb|mariadb-operator|metallb-system|metrics-server|monitoring|piraeus-datastore|reflector|reloader|sops-secrets-operator|traefik|vpa|netpol-probe|netpol-storage-check)$'
+egress_exempt='^(kube-system|default|argocd|cert-manager|cloudflared|csi-rclone|external-dns|k8up|mariadb|mariadb-operator|metallb-system|metrics-server|monitoring|piraeus-datastore|reflector|reloader|sops-secrets-operator|traefik|vpa|netpol-probe|netpol-storage-check)$'
 
 with_pods=$(kubectl get pods -A -o json \
   | jq -r '.items[] | select(.spec.hostNetwork != true) | .metadata.namespace' | sort -u)
