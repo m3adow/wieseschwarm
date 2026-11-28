@@ -185,7 +185,7 @@ the component copies the bucket from the app's Schedule. Its pod is a second wor
 app's folder, so the app's selectors must name `app.kubernetes.io/component` ("Recommended labels"
 in `kubernetes/CLAUDE.md`). `ResticReadDataCheckMissing` fires if a backed-up namespace has no check.
 
-By default, k8up backs up every PVC in the namespace. To exclude a pod's volumes: annotate the pod with `k8up.io/backup: "false"`.
+By default, k8up backs up every bound PVC in the namespace whose access mode is `ReadWriteOnce` or `ReadWriteMany`. To exclude one, put the annotation `k8up.io/backup: "false"` on the **PVC**. k8up does not read it from pods: on a pod it has no effect.
 
 ## Monitoring and alerting
 
