@@ -170,6 +170,48 @@ spec:
         collectors:
           alloy-metrics:
             presets: [clustered, statefulset]
+            # etcd is a Talos host service on port 2381. Not a ServiceMonitor: Argo CD excludes the
+            # EndpointSlice that would need. See "etcd scrape" in this directory's CLAUDE.md.
+            extraConfig: |
+              discovery.kubernetes "etcd" {
+                role = "node"
+              }
+
+              discovery.relabel "etcd" {
+                targets = discovery.kubernetes.etcd.targets
+                rule {
+                  source_labels = ["__meta_kubernetes_node_labelpresent_node_role_kubernetes_io_control_plane"]
+                  regex         = "true"
+                  action        = "keep"
+                }
+                rule {
+                  source_labels = ["__meta_kubernetes_node_address_InternalIP"]
+                  replacement   = "$1:2381"
+                  target_label  = "__address__"
+                }
+                rule {
+                  source_labels = ["__meta_kubernetes_node_name"]
+                  target_label  = "node"
+                }
+              }
+
+              prometheus.scrape "etcd" {
+                targets    = discovery.relabel.etcd.output
+                job_name   = "etcd-metrics"
+                forward_to = [prometheus.relabel.etcd.receiver]
+                clustering {
+                  enabled = true
+                }
+              }
+
+              prometheus.relabel "etcd" {
+                forward_to = [prometheus.remote_write.grafana_cloud_metrics.receiver]
+                rule {
+                  source_labels = ["__name__"]
+                  regex         = "up|etcd_disk_(wal_fsync|backend_commit)_duration_seconds_(bucket|sum|count)|etcd_server_(leader_changes_seen_total|has_leader|is_leader|proposals_failed_total)"
+                  action        = "keep"
+                }
+              }
           alloy-singleton:
             presets: [singleton]
             extraConfig: |

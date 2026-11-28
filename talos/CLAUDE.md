@@ -127,7 +127,7 @@ current status before upgrading Kubernetes.
 
 ## etcd metrics
 
-`wieseschwarm-all-patch.yaml` sets `cluster.etcd.extraArgs.listen-metrics-urls: http://0.0.0.0:2381`, the method Talos documents for exposing etcd's metrics. `kubernetes/01_infrastructure/etcd-metrics/` points Alloy at it, and `EtcdHighFsyncDurations` (`grafana-alloy/cluster-rules/prometheusrule-etcd.yaml`) warns when a member's WAL `fsync` stays slow. Added 2026-11-27, after drains pushed `fsync` on the slow system SSDs of nodes 1 and 3 to 9 s (see "Upgrading Talos on this hardware").
+`wieseschwarm-all-patch.yaml` sets `cluster.etcd.extraArgs.listen-metrics-urls: http://0.0.0.0:2381`, the method Talos documents for exposing etcd's metrics. Alloy scrapes it through node discovery (see "etcd scrape" in `kubernetes/01_infrastructure/grafana-alloy/CLAUDE.md`), and `EtcdHighFsyncDurations` (`grafana-alloy/cluster-rules/prometheusrule-etcd.yaml`) warns when a member's WAL `fsync` stays slow. Added 2026-11-27, after drains pushed `fsync` on the slow system SSDs of nodes 1 and 3 to 9 s (see "Upgrading Talos on this hardware").
 
 **Port 2381 is open to the LAN on purpose.** It serves only `/metrics` and `/health`, over plain HTTP without authentication, on every node interface. Anyone on `192.168.10.0/24`, or on a network routed to it, can read etcd's metrics (request rates, database size, leader state), but no keys or values: etcd's data stays behind client certificates on port 2379. Closing 2381 would need the Talos ingress firewall, which this cluster does not use. Accepted on 2026-11-27.
 

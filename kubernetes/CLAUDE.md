@@ -75,13 +75,13 @@ make argocd-password        # Print initial admin password
 
 Wave annotations control ArgoCD rollout order within a sync operation. **Infrastructure Applications use negative waves so that user Applications with no sync-wave annotation deploy last** — ArgoCD defaults to wave 0, which is after all infrastructure.
 
-| Wave | Current occupants                                                                                                                                                                                                                                       | Purpose                                                  |
-| ---- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------- |
-| -4   | `argocd`, `mariadb-operator-crds`, `prometheus-operator-crds`                                                                                                                                                                                           | ArgoCD self-upgrade + CRD-only installs; processed first |
-| -3   | `cert-manager`, `metallb`, `mariadb-operator`, `piraeus`, `sops-secrets-operator`, `vpa`                                                                                                                                                                | CRD-providing operators; wave -2 config depends on them  |
-| -2   | `cert-manager-config`, `metallb-config`, `traefik`, `reloader`, `reflector`, `k8up`, `kube-network-policies`, `etcd-metrics`, `csi-rclone`, `mariadb-operator-config`, `metrics-server`, `grafana-alloy`, `grafana-alloy-rules`, `grafana-alloy-config` | Operators/config that only need core K8s resources       |
-| -1   | `traefik-config`, `cloudflared`, `external-dns`                                                                                                                                                                                                         | Finalize + config needing wave -2 resources              |
-| 0    | all user-facing applications (default; no annotation needed)                                                                                                                                                                                            | Applications deploy after all infrastructure             |
+| Wave | Current occupants                                                                                                                                                                                                                       | Purpose                                                  |
+| ---- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------- |
+| -4   | `argocd`, `mariadb-operator-crds`, `prometheus-operator-crds`                                                                                                                                                                           | ArgoCD self-upgrade + CRD-only installs; processed first |
+| -3   | `cert-manager`, `metallb`, `mariadb-operator`, `piraeus`, `sops-secrets-operator`, `vpa`                                                                                                                                                | CRD-providing operators; wave -2 config depends on them  |
+| -2   | `cert-manager-config`, `metallb-config`, `traefik`, `reloader`, `reflector`, `k8up`, `kube-network-policies`, `csi-rclone`, `mariadb-operator-config`, `metrics-server`, `grafana-alloy`, `grafana-alloy-rules`, `grafana-alloy-config` | Operators/config that only need core K8s resources       |
+| -1   | `traefik-config`, `cloudflared`, `external-dns`                                                                                                                                                                                         | Finalize + config needing wave -2 resources              |
+| 0    | all user-facing applications (default; no annotation needed)                                                                                                                                                                            | Applications deploy after all infrastructure             |
 
 **Rule of thumb:** Helm chart installs at wave N, their Kustomize config at wave N+1. New applications need no sync-wave annotation — the ArgoCD default of wave 0 guarantees they land after all infrastructure waves.
 
@@ -144,7 +144,6 @@ All Helm values are currently inlined in Application specs (`spec.sources[].helm
 | MariaDB Operator                                              | `mariadb-operator`      |
 | MariaDB Galera Cluster                                        | `mariadb`               |
 | kube-network-policies (metrics only; engine is Talos-managed) | `kube-system`           |
-| etcd-metrics (scrape config only; etcd is Talos-managed)      | `kube-system`           |
 | rclone CSI driver                                             | `csi-rclone`            |
 
 All Applications use `CreateNamespace=true`; ArgoCD creates namespaces on-demand.
@@ -234,6 +233,8 @@ To onboard an app that exposes a Prometheus-format `/metrics` endpoint, add a `S
 Reading those two raw files, note that `service-demo.yaml` has **no** `metadata.labels` block at all — the app's `kustomization.yaml` `labels:` transformer supplies it at build time (see "Recommended labels" below). So "the Service must carry `metadata.labels`" is a statement about built output, not about the file on disk. Check with `kubectl kustomize --enable-helm kubernetes/02_applications/demo`, not by eye.
 
 Also note `endpoints[].port` refers to the Service's/Pod's **named port** (e.g. `metrics`), not a raw port number.
+
+**A target that no pod backs cannot go through a ServiceMonitor here.** A selector-less Service needs hand-written `Endpoints` or `EndpointSlice` objects, and Argo CD skips both kinds cluster-wide (`resource.exclusions` in `argocd-cm`). The app still shows Synced and Healthy while the object never reaches the cluster, so the scrape silently has no targets. Scrape such targets from Alloy's own config instead, as "etcd scrape" in `01_infrastructure/grafana-alloy/CLAUDE.md` does.
 
 An app's `PrometheusRule` can also read cluster-standard series from kube-state-metrics, kubelet, cadvisor or node-exporter, but Alloy ships only the metrics on its keep-lists. A rule that reads one not yet listed adds it to that source's `includeMetrics` in `01_infrastructure/grafana-alloy/application-grafana-alloy.yaml`, or the rule never fires. See "Keep-lists" in `01_infrastructure/grafana-alloy/CLAUDE.md`.
 
