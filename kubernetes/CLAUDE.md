@@ -184,7 +184,7 @@ Every backed-up app also lists the component `restic-read-data-check` from the a
 
 Full YAML templates are in `kubernetes/01_infrastructure/k8up/CLAUDE.md`.
 
-By default, k8up backs up every PVC in the namespace. To exclude a pod's volumes: annotate the pod with `k8up.io/backup: "false"`.
+By default, k8up backs up every bound PVC in the namespace whose access mode is `ReadWriteOnce` or `ReadWriteMany`. To exclude one, put the annotation `k8up.io/backup: "false"` on the **PVC**. k8up does not read it from pods: on a pod it has no effect.
 
 ## Cluster utilities
 
