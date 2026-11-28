@@ -6,7 +6,7 @@ metadata:
   namespace: mariadb
 spec:
   # Pinned so Renovate tracks it; the operator's default applies only at creation.
-  image: mariadb:11.8.10
+  image: mariadb:13.1.2
 
   rootPasswordSecretKeyRef:
     name: mariadb-credentials
